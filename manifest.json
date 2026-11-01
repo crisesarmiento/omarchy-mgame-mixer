@@ -5,8 +5,11 @@
   "version": "0.1.0",
   "author": "Cristian Sarmiento",
   "license": "MIT",
+  "homepage": "https://github.com/crisesarmiento/omarchy-mgame-mixer",
   "description": "Mixer Game/Chat para la M-Audio M-Game RGB Dual: volumen, mute y ruteo de apps entre dos sinks virtuales de PipeWire.",
-  "kinds": ["bar-widget"],
+  "kinds": [
+    "bar-widget"
+  ],
   "entryPoints": {
     "barWidget": "BarWidget.qml"
   },
@@ -25,7 +28,11 @@
         "type": "enum",
         "label": "Canales de Chat",
         "description": "Par de canales de la salida de 8 canales que usa Chat. Comprobalo con: speaker-test -c 8 -t wav -l 1. Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
-        "options": ["FC LFE", "RL RR", "SL SR"],
+        "options": [
+          "FC LFE",
+          "RL RR",
+          "SL SR"
+        ],
         "defaultValue": "FC LFE"
       }
     ]
