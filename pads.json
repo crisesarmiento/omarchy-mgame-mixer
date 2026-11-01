@@ -1,27 +1,12 @@
 {
   "client": "M-Game RGB Dual Streaming Port",
-  "_source": "Captured 2026-10-31 on this unit via `aseqdump -p 16:0` (ALSA seq client 16 'M-Game RGB Dual Streaming Port'). Device sends nothing when idle.",
-  "_format": "Per-button message: F0 00 01 05 42 00 01 <id> 01 02 01 <state> 00 00 00 <checksum> F7 ; state 01=press 00=release. Device ALSO sends a bitmask message per press: F0 00 01 05 42 00 01 00 00 02 00 00 <lo> <hi> 00 <cs> F7 (release = lo 00 hi 02) — ignore it, match the per-button one.",
+  "_source": "Live aseqdump on this unit, port resolved by name. Press and release checked through F7. Checksum matches DeviceValue::ValidateMidiMessage.",
+  "_format": "Button state param is 0x01020100 + id, value 1 press / 0 release, sent as F0 00 01 05 42 00 01 <id> 01 02 01 <state> 00 00 00 <cs> F7. A momentary bitmask on param 0x00020000 follows; ignore it. The press field is the prefix the listener matches.",
   "pads": {
-    "1": {
-      "press": "F0 00 01 05 42 00 01 14 01 02 01 01",
-      "release": "F0 00 01 05 42 00 01 14 01 02 01 00"
-    },
-    "2": {
-      "press": "F0 00 01 05 42 00 01 16 01 02 01 01",
-      "release": "F0 00 01 05 42 00 01 16 01 02 01 00"
-    },
-    "3": {
-      "press": "F0 00 01 05 42 00 01 18 01 02 01 01",
-      "release": "F0 00 01 05 42 00 01 18 01 02 01 00"
-    },
-    "4": {
-      "press": "F0 00 01 05 42 00 01 1A 01 02 01 01",
-      "release": "F0 00 01 05 42 00 01 1A 01 02 01 00"
-    },
-    "5": {
-      "press": "F0 00 01 05 42 00 01 1C 01 02 01 01",
-      "release": "F0 00 01 05 42 00 01 1C 01 02 01 00"
-    }
+    "1": {"id": "14", "param": "01020114", "bit": "800", "press": "F0 00 01 05 42 00 01 14 01 02 01 01", "release": "F0 00 01 05 42 00 01 14 01 02 01 00"},
+    "2": {"id": "16", "param": "01020116", "bit": "1000", "press": "F0 00 01 05 42 00 01 16 01 02 01 01", "release": "F0 00 01 05 42 00 01 16 01 02 01 00"},
+    "3": {"id": "18", "param": "01020118", "bit": "2000", "press": "F0 00 01 05 42 00 01 18 01 02 01 01", "release": "F0 00 01 05 42 00 01 18 01 02 01 00"},
+    "4": {"id": "1A", "param": "0102011A", "bit": "4000", "press": "F0 00 01 05 42 00 01 1A 01 02 01 01", "release": "F0 00 01 05 42 00 01 1A 01 02 01 00"},
+    "5": {"id": "1C", "param": "0102011C", "bit": "10000", "press": "F0 00 01 05 42 00 01 1C 01 02 01 01", "release": "F0 00 01 05 42 00 01 1C 01 02 01 00"}
   }
 }

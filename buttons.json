@@ -1,15 +1,15 @@
 {
-  "_source": "Captured 2026-10-31 on this unit. Buttons are LATCHING: message carries the new state (01=on, 00=off), not press/release. Labels are the user's names, in the order they pressed them.",
-  "_format": "F0 00 01 05 42 00 01 <id> 01 02 01 <state> 00 00 00 <cs> F7 (a twin with sub-byte 02 instead of 01 follows, likely LED echo). Mute changes also emit F0 00 01 05 42 00 02 00 00 02 44 <8 bytes> <cs> F7 (per-output mute/routing vector, undecoded). Page/bank changes (0E,12) also dump preset blocks (types 0B/04/07/08) — undecoded.",
+  "_source": "Live aseqdump on this unit, 2026-11-01. One press each, in order. Value 1 latched the button; page 2 also forced page 1 to 0, so pages are exclusive. Mute presses added bits to param 0x44020000, so 1 means muted for that pass.",
+  "_format": "State param 0x010201XX, LED echo param 0x010202XX, same value. Prefixes below are what the listener matches. Mic mute also emits companion 0x30. Activity bitmask on 0x00020000 is momentary and is not the latch.",
   "buttons": {
-    "mic_mute":       {"id": "02", "on": "F0 00 01 05 42 00 01 02 01 02 01 01", "off": "F0 00 01 05 42 00 01 02 01 02 01 00", "note": "also emits id 30 alongside"},
-    "game_mute":      {"id": "06", "on": "F0 00 01 05 42 00 01 06 01 02 01 01", "off": "F0 00 01 05 42 00 01 06 01 02 01 00"},
-    "chat_mute":      {"id": "08", "on": "F0 00 01 05 42 00 01 08 01 02 01 01", "off": "F0 00 01 05 42 00 01 08 01 02 01 00"},
-    "sampler_mute":   {"id": "0A", "on": "F0 00 01 05 42 00 01 0A 01 02 01 01", "off": "F0 00 01 05 42 00 01 0A 01 02 01 00"},
-    "main_alt_mute":  {"id": "0C", "on": "F0 00 01 05 42 00 01 0C 01 02 01 01", "off": "F0 00 01 05 42 00 01 0C 01 02 01 00"},
-    "sample_page_1":  {"id": "0E", "on": "F0 00 01 05 42 00 01 0E 01 02 01 01", "off": "F0 00 01 05 42 00 01 0E 01 02 01 00"},
-    "sample_page_2":  {"id": "12", "on": "F0 00 01 05 42 00 01 12 01 02 01 01", "off": "F0 00 01 05 42 00 01 12 01 02 01 00"},
-    "bank_switch":    {"id": "10", "on": "F0 00 01 05 42 00 01 10 01 02 01 01", "off": "F0 00 01 05 42 00 01 10 01 02 01 00"},
-    "fx_param":       {"id": "00", "on": "F0 00 01 05 42 00 01 00 01 02 01 01", "off": "F0 00 01 05 42 00 01 00 01 02 01 00"}
+    "mic_mute":      {"id": "02", "param": "01020102", "led": "01020202", "companion": "01020130", "bit": "02", "muteBit": "01", "on": "F0 00 01 05 42 00 01 02 01 02 01 01", "off": "F0 00 01 05 42 00 01 02 01 02 01 00"},
+    "game_mute":     {"id": "06", "param": "01020106", "led": "01020206", "bit": "08", "muteBit": "02", "on": "F0 00 01 05 42 00 01 06 01 02 01 01", "off": "F0 00 01 05 42 00 01 06 01 02 01 00"},
+    "chat_mute":     {"id": "08", "param": "01020108", "led": "01020208", "bit": "10", "muteBit": "04", "on": "F0 00 01 05 42 00 01 08 01 02 01 01", "off": "F0 00 01 05 42 00 01 08 01 02 01 00"},
+    "sampler_mute":  {"id": "0A", "param": "0102010A", "led": "0102020A", "bit": "20", "muteBit": "10", "on": "F0 00 01 05 42 00 01 0A 01 02 01 01", "off": "F0 00 01 05 42 00 01 0A 01 02 01 00"},
+    "main_alt_mute": {"id": "0C", "param": "0102010C", "led": "0102020C", "bit": "40", "muteBit": "28", "on": "F0 00 01 05 42 00 01 0C 01 02 01 01", "off": "F0 00 01 05 42 00 01 0C 01 02 01 00"},
+    "sample_page_1": {"id": "0E", "param": "0102010E", "led": "0102020E", "bit": "100", "on": "F0 00 01 05 42 00 01 0E 01 02 01 01", "off": "F0 00 01 05 42 00 01 0E 01 02 01 00"},
+    "sample_page_2": {"id": "12", "param": "01020112", "led": "01020212", "bit": "400", "on": "F0 00 01 05 42 00 01 12 01 02 01 01", "off": "F0 00 01 05 42 00 01 12 01 02 01 00"},
+    "bank_switch":   {"id": "10", "param": "01020110", "led": "01020210", "on": "F0 00 01 05 42 00 01 10 01 02 01 01", "off": "F0 00 01 05 42 00 01 10 01 02 01 00"},
+    "fx_param":      {"id": "00", "param": "01020100", "led": "01020200", "on": "F0 00 01 05 42 00 01 00 01 02 01 01", "off": "F0 00 01 05 42 00 01 00 01 02 01 00"}
   }
 }

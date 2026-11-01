@@ -34,6 +34,11 @@ Sampler
   listener-enable                 instala y arranca el servicio systemd --user del listener
   listener-disable                lo detiene y lo desactiva
 
+Protocolo SysEx (ver docs/protocol.md)
+  decode HEX                      valida y decodifica una trama
+  send-raw HEX                    valida y envía una trama a la M-Game (amidi)
+  get PARAM_HEX [--sub N] [--timeout S]   pide un parámetro e imprime las respuestas
+
 PARES = ocho pares separados por coma, en este orden:
   game,chat,sampler,system,in_stream,in_alt,in_chat,in_sampler
 """
@@ -660,6 +665,82 @@ def listen():
     raise SystemExit(1)
 
 
+# ------------------------- protocolo SysEx (raw) ---------------------------
+def find_rawmidi():
+    """hw:X,Y,Z de la M-Game vía `amidi -l`, o None."""
+    try:
+        out = run("amidi", "-l").stdout
+    except Exception:
+        return None
+    for line in out.splitlines():
+        m = re.match(r"\S+\s+(hw:\d+,\d+(?:,\d+)?)\s+(.+)$", line.strip())
+        if m and "M-Game RGB Dual" in m.group(2):
+            return m.group(1)
+    return None
+
+
+def proto_frame(hex_str):
+    import mgame_proto
+    try:
+        frame = mgame_proto.from_hex(hex_str)
+    except ValueError:
+        raise SystemExit("hex inválido")
+    if frame[:5] != mgame_proto.HEADER:
+        raise SystemExit("la trama no empieza con el header de la M-Game")
+    msg = mgame_proto.parse(frame)
+    if msg is None:
+        raise SystemExit("trama inválida (longitud o checksum)")
+    return frame, msg
+
+
+def amidi_send(port, frame):
+    import mgame_proto
+    res = run("amidi", "-p", port, "-S", mgame_proto.to_hex(frame).replace(" ", ""), timeout=5)
+    if res.returncode != 0:
+        raise SystemExit("amidi no pudo enviar (¿puerto ocupado?): " + res.stderr.strip()[:200])
+
+
+def cmd_decode(hex_str):
+    _, msg = proto_frame(hex_str)
+    print(json.dumps(msg.to_dict()))
+
+
+def cmd_send_raw(hex_str):
+    frame, _ = proto_frame(hex_str)
+    port = find_rawmidi()
+    if not port:
+        raise SystemExit("no se encontró el rawmidi de la M-Game")
+    amidi_send(port, frame)
+
+
+def cmd_get(param_hex, sub, timeout):
+    import mgame_proto
+    if not re.fullmatch(r"(0x)?[0-9A-Fa-f]{1,8}", param_hex):
+        raise SystemExit("param inválido (hex)")
+    frame = mgame_proto.build_get(int(param_hex, 16), sub)
+    port = find_rawmidi()
+    if not port:
+        raise SystemExit("no se encontró el rawmidi de la M-Game")
+    rx = subprocess.Popen(["amidi", "-p", port, "-d", "-t", str(max(1, int(timeout)))],
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    time.sleep(0.2)
+    if rx.poll() is not None:
+        raise SystemExit("amidi no pudo abrir el puerto para leer (¿ocupado por otro lector?): "
+                         + (rx.stderr.read() or "").strip()[:200])
+    amidi_send(port, frame)
+    out, _ = rx.communicate(timeout=timeout + 5)
+    toks = re.findall(r"\b[0-9A-F]{2}\b", out)
+    cur = []
+    for t in toks:
+        if t == "F0":
+            cur = []
+        cur.append(t)
+        if t == "F7":
+            msg = mgame_proto.parse(bytes(int(x, 16) for x in cur))
+            print(json.dumps({"raw": " ".join(cur), "msg": msg.to_dict() if msg else None}))
+            cur = []
+
+
 def listener_enable():
     script = os.path.realpath(__file__)
     if re.search(r"[\s%$\"'\\]", script):
@@ -861,6 +942,29 @@ def main(argv):
         stop_samples()
     elif cmd == "listen":
         listen()
+    elif cmd == "decode":
+        need(1)
+        cmd_decode(" ".join(args))
+    elif cmd == "send-raw":
+        need(1)
+        cmd_send_raw(" ".join(args))
+    elif cmd == "get":
+        need(1)
+        sub, timeout, rest = 0, 2.0, list(args[1:])
+        while rest:
+            flag = rest.pop(0)
+            if flag in ("--sub", "--timeout") and rest:
+                val = rest.pop(0)
+                try:
+                    if flag == "--sub":
+                        sub = int(val)
+                    else:
+                        timeout = max(1.0, min(30.0, float(val)))
+                except ValueError:
+                    raise SystemExit("número inválido")
+            else:
+                raise SystemExit(__doc__)
+        cmd_get(args[0], sub, timeout)
     elif cmd == "listener-enable":
         listener_enable()
     elif cmd == "listener-disable":
