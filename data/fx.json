@@ -1,0 +1,1051 @@
+{
+  "version": 1,
+  "knob": {
+    "param": "01040300",
+    "n": 4,
+    "words": [
+      {
+        "index": 0,
+        "name": "target",
+        "meaning": "Param id the knob edits. Factory voice effects use 0x41000001, 0x41000002, 0x41040000 or 0x41080000. Vocal presets use 0x41000001/0x41000002, distortion presets use 0x41040000, chorus and reverb presets use 0x41080000. The live word is 0x01050000, the LGlobalSettings id, so a target outside the 0x41 family is possible.",
+        "confidence": "observed"
+      },
+      {
+        "index": 1,
+        "name": "mask",
+        "meaning": "Bits the knob changes. Voice effects use 0x7F, 0x7E or 0x7F0000; chorus presets use 0x7F00. Word 2 and word 3 always sit inside these bits, and word 2 <= word 3. That mask reading is not confirmed on the device.",
+        "confidence": "inferred"
+      },
+      {
+        "index": 2,
+        "name": "low",
+        "meaning": "Low end of the knob, in the same bits as word 1. Unconfirmed.",
+        "confidence": "inferred"
+      },
+      {
+        "index": 3,
+        "name": "high",
+        "meaning": "High end of the knob, in the same bits as word 1. Unconfirmed.",
+        "confidence": "inferred"
+      }
+    ],
+    "live": [
+      17104896,
+      127,
+      4,
+      16
+    ]
+  },
+  "blocks": [
+    {
+      "param": "41000000",
+      "n": 11,
+      "when": "always",
+      "role": "Vocal-processor words. Every VocalProcessorPresets.xml entry changes this block and no other processor file does. Per-byte meaning unconfirmed. The voice file is 31 slots of 8 records; NAME markers fill 4, so the eight-effect split is rejected.",
+      "writable": false,
+      "confidence": "observed"
+    },
+    {
+      "param": "41040000",
+      "n": 1,
+      "when": "always",
+      "role": "Distortion words. Every DistortionProcessorPresets.xml entry changes this block and no other processor file does.",
+      "writable": false,
+      "confidence": "observed"
+    },
+    {
+      "param": "41070000",
+      "n": 6,
+      "when": "always",
+      "role": "Reverb and chorus words. Every ChorusProcessorPresets.xml and ReverbProcessorPresets.xml entry changes this block. Which byte belongs to which processor is unconfirmed.",
+      "writable": false,
+      "confidence": "observed"
+    },
+    {
+      "param": "41080000",
+      "n": 1,
+      "when": "always",
+      "role": "Reverb/chorus mix word. Chorus presets put the knob mask in byte 1 (0x7F00); reverb presets put it in byte 0 (0x7F). Not every chorus or reverb entry changes the word.",
+      "writable": false,
+      "confidence": "observed"
+    },
+    {
+      "param": "41010000",
+      "n": 3,
+      "when": "by-type",
+      "role": "Type-selected block. Not in the factory voice-effect files.",
+      "writable": false,
+      "confidence": "inferred"
+    },
+    {
+      "param": "41020000",
+      "n": 1,
+      "when": "by-type",
+      "role": "In the LEffects translate table. Not in the factory files. The earlier pass left N unknown; it is not listed there as a type-selected write.",
+      "writable": false,
+      "confidence": "inferred"
+    },
+    {
+      "param": "41030000",
+      "n": 1,
+      "when": "by-type",
+      "role": "Type-selected block. Not in the factory voice-effect files.",
+      "writable": false,
+      "confidence": "inferred"
+    },
+    {
+      "param": "41050000",
+      "n": 7,
+      "when": "by-type",
+      "role": "In the LEffects translate table. Not in the factory files. The earlier pass left N unknown.",
+      "writable": false,
+      "confidence": "inferred"
+    },
+    {
+      "param": "41060000",
+      "n": 2,
+      "when": "by-type",
+      "role": "Type-selected block. Not in the factory voice-effect files.",
+      "writable": false,
+      "confidence": "inferred"
+    },
+    {
+      "param": "41090000",
+      "n": 7,
+      "when": "by-type",
+      "role": "Type-selected block. Not in the factory voice-effect files.",
+      "writable": false,
+      "confidence": "inferred"
+    }
+  ],
+  "family0105": {
+    "status": "partial",
+    "params": [
+      {
+        "id": "01050000",
+        "n": 1,
+        "role": "LGlobalSettings local 0. Translate writes this id with N=1. GetParamValueDefault stores 10. Meaning of the value is unknown. The live knob word 0 is this same id, so it is not a second 0x0105 param. No other 0x0105xxxx immediate is in the translate. Not marked writable.",
+        "writable": false,
+        "confidence": "inferred"
+      }
+    ]
+  },
+  "processors": [
+    {
+      "id": "vocal",
+      "file": "VocalProcessorPresets.xml",
+      "params": [
+        {
+          "key": "AutoHarmonyEnable",
+          "label": "Auto Harmony Enable",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "AutoHarmonyGenderEnable",
+          "label": "Auto Harmony Gender Enable",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "ChromaticCorrectionScale",
+          "label": "Chromatic Correction Scale",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "CorrectionSmoothness",
+          "label": "Correction Smoothness",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "EnableCorrection",
+          "label": "Enable Correction",
+          "min": 0,
+          "max": 3,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "EnableLeadProcessing",
+          "label": "Enable Lead Processing",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "EnableVocalProcessor",
+          "label": "Enable Vocal Processor",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "HarmonyHumanization",
+          "label": "Harmony Humanization",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "HarmonyPortamentoTime",
+          "label": "Harmony Portamento Time",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "HarmonyVolume",
+          "label": "Harmony Volume",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Key",
+          "label": "Key",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "LeadFormant",
+          "label": "Lead Formant",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "LeadOctave",
+          "label": "Lead Octave",
+          "min": 0,
+          "max": 7,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "LeadVibratoDelay",
+          "label": "Lead Vibrato Delay",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "LeadVibratoDepth",
+          "label": "Lead Vibrato Depth",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "LeadVibratoRate",
+          "label": "Lead Vibrato Rate",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "LeadVibratoStyle",
+          "label": "Lead Vibrato Style",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Scale",
+          "label": "Scale",
+          "min": 0,
+          "max": 3,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice0FixedPitch",
+          "label": "Voice0 Fixed Pitch",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice0Formant",
+          "label": "Voice0 Formant",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice0HarmonyInterval",
+          "label": "Voice0 Harmony Interval",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice0HarmonyOctave",
+          "label": "Voice0 Harmony Octave",
+          "min": 0,
+          "max": 7,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice0VibratoDelay",
+          "label": "Voice0 Vibrato Delay",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice0VibratoDepth",
+          "label": "Voice0 Vibrato Depth",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice0VibratoRate",
+          "label": "Voice0 Vibrato Rate",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice0VibratoStyle",
+          "label": "Voice0 Vibrato Style",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice1FixedPitch",
+          "label": "Voice1 Fixed Pitch",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice1Formant",
+          "label": "Voice1 Formant",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice1HarmonyInterval",
+          "label": "Voice1 Harmony Interval",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice1HarmonyOctave",
+          "label": "Voice1 Harmony Octave",
+          "min": 0,
+          "max": 7,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice1VibratoDelay",
+          "label": "Voice1 Vibrato Delay",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice1VibratoDepth",
+          "label": "Voice1 Vibrato Depth",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice1VibratoRate",
+          "label": "Voice1 Vibrato Rate",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice1VibratoStyle",
+          "label": "Voice1 Vibrato Style",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice2FixedPitch",
+          "label": "Voice2 Fixed Pitch",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice2Formant",
+          "label": "Voice2 Formant",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice2HarmonyInterval",
+          "label": "Voice2 Harmony Interval",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice2HarmonyOctave",
+          "label": "Voice2 Harmony Octave",
+          "min": 0,
+          "max": 7,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice2VibratoDelay",
+          "label": "Voice2 Vibrato Delay",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice2VibratoDepth",
+          "label": "Voice2 Vibrato Depth",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice2VibratoRate",
+          "label": "Voice2 Vibrato Rate",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice2VibratoStyle",
+          "label": "Voice2 Vibrato Style",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice3FixedPitch",
+          "label": "Voice3 Fixed Pitch",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice3Formant",
+          "label": "Voice3 Formant",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice3HarmonyInterval",
+          "label": "Voice3 Harmony Interval",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice3HarmonyOctave",
+          "label": "Voice3 Harmony Octave",
+          "min": 0,
+          "max": 7,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice3VibratoDelay",
+          "label": "Voice3 Vibrato Delay",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice3VibratoDepth",
+          "label": "Voice3 Vibrato Depth",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice3VibratoRate",
+          "label": "Voice3 Vibrato Rate",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "Voice3VibratoStyle",
+          "label": "Voice3 Vibrato Style",
+          "min": 0,
+          "max": 15,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        }
+      ]
+    },
+    {
+      "id": "chorus",
+      "file": "ChorusProcessorPresets.xml",
+      "params": [
+        {
+          "key": "ChorusDelayTime",
+          "label": "Chorus Delay Time",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "ChorusDepth",
+          "label": "Chorus Depth",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "ChorusEnable",
+          "label": "Chorus Enable",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "ChorusFeedback",
+          "label": "Chorus Feedback",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "ChorusInputLevel",
+          "label": "Chorus Input Level",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "ChorusMixLevel",
+          "label": "Chorus Mix Level",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "ChorusRate",
+          "label": "Chorus Rate",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "ChorusSendtoReverb",
+          "label": "Chorus Sendto Reverb",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "ChorusStereoSpread",
+          "label": "Chorus Stereo Spread",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "ChorusWaveform",
+          "label": "Chorus Waveform",
+          "min": 0,
+          "max": 3,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "DryMixLevel",
+          "label": "Dry Mix Level",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "EffectEnable",
+          "label": "Effect Enable",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        }
+      ]
+    },
+    {
+      "id": "distortion",
+      "file": "DistortionProcessorPresets.xml",
+      "params": [
+        {
+          "key": "DistortionEffectAmount",
+          "label": "Distortion Effect Amount",
+          "min": 0,
+          "max": 63,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "DistortionEnable",
+          "label": "Distortion Enable",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "HiCutFilterFrequency",
+          "label": "Hi Cut Filter Frequency",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "HiCutFilterResonance",
+          "label": "Hi Cut Filter Resonance",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "LoCutFilterFrequency",
+          "label": "Lo Cut Filter Frequency",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        }
+      ]
+    },
+    {
+      "id": "reverb",
+      "file": "ReverbProcessorPresets.xml",
+      "params": [
+        {
+          "key": "DryMixLevel",
+          "label": "Dry Mix Level",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "EffectEnable",
+          "label": "Effect Enable",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbConfiguration",
+          "label": "V Reverb Configuration",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbDiffusion",
+          "label": "V Reverb Diffusion",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbEarlyReflectionBalance",
+          "label": "V Reverb Early Reflection Balance",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbHFDamping",
+          "label": "V Reverb HF Damping",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbInputLevel",
+          "label": "V Reverb Input Level",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbMixLevel",
+          "label": "V Reverb Mix Level",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbModAmount",
+          "label": "V Reverb Mod Amount",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbModSpeed",
+          "label": "V Reverb Mod Speed",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbMode",
+          "label": "V Reverb Mode",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbModulationMode",
+          "label": "V Reverb Modulation Mode",
+          "min": 0,
+          "max": 1,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbPreDelayTime",
+          "label": "V Reverb Pre Delay Time",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbPreHPF",
+          "label": "V Reverb Pre HPF",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbPreLPF",
+          "label": "V Reverb Pre LPF",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbSize",
+          "label": "V Reverb Size",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbTime_Feedback",
+          "label": "V Reverb Time_Feedback",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbToneFreq",
+          "label": "V Reverb Tone Freq",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        },
+        {
+          "key": "VReverbToneGain",
+          "label": "V Reverb Tone Gain",
+          "min": 0,
+          "max": 127,
+          "unit": "",
+          "deviceParam": null,
+          "confidence": "inferred"
+        }
+      ]
+    }
+  ],
+  "micRecords": [
+    {
+      "id": 290,
+      "class": "MA::MicHighPassFilters",
+      "deviceParam": null,
+      "hostSide": true,
+      "fields": [
+        {
+          "name": "Biquad1Frequency",
+          "type": "unsigned int 0..127"
+        },
+        {
+          "name": "BiquadEnable",
+          "type": "unsigned int 0..1"
+        },
+        {
+          "name": "BiquadOverallGain",
+          "type": "unsigned int 0..127"
+        }
+      ]
+    },
+    {
+      "id": 291,
+      "class": "MA::MicNoiseGate",
+      "deviceParam": null,
+      "hostSide": true,
+      "fields": [
+        {
+          "name": "NoiseGateEnable",
+          "type": "unsigned int 0..1"
+        },
+        {
+          "name": "NoiseGatePassGain",
+          "type": "unsigned int 0..31"
+        },
+        {
+          "name": "NoiseGateThresholdLevel",
+          "type": "unsigned int 0..127"
+        }
+      ]
+    },
+    {
+      "id": 294,
+      "class": "MA::Mic5BandPEQ",
+      "deviceParam": null,
+      "hostSide": true,
+      "fields": [
+        {
+          "name": "Biquad1PEQGain",
+          "type": "unsigned int 0..127"
+        },
+        {
+          "name": "Biquad3Frequency",
+          "type": "unsigned int 0..127"
+        },
+        {
+          "name": "Biquad3PEQGain",
+          "type": "unsigned int 0..127"
+        },
+        {
+          "name": "Biquad5PEQGain",
+          "type": "unsigned int 0..127"
+        },
+        {
+          "name": "BiquadEnable",
+          "type": "unsigned int 0..1"
+        }
+      ]
+    },
+    {
+      "id": 295,
+      "class": "MA::MicDeEsser",
+      "deviceParam": null,
+      "hostSide": true,
+      "fields": [
+        {
+          "name": "CompressorRatio",
+          "type": "unsigned int 0..127"
+        }
+      ]
+    },
+    {
+      "id": 296,
+      "class": "MA::MicCompressor",
+      "deviceParam": null,
+      "hostSide": true,
+      "fields": [
+        {
+          "name": "CompressorBoost",
+          "type": "unsigned int 0..127"
+        },
+        {
+          "name": "CompressorEnable",
+          "type": "unsigned int 0..1"
+        },
+        {
+          "name": "CompressorRatio",
+          "type": "unsigned int 0..127"
+        }
+      ]
+    }
+  ],
+  "apply": {
+    "voicePresetSends": [
+      "41000000",
+      "41040000",
+      "41070000",
+      "41080000",
+      "01040300"
+    ],
+    "neverSend": [
+      "5F0000xx",
+      "50000000-501FFFFF",
+      "01020002",
+      "01020004",
+      "00030000"
+    ]
+  }
+}

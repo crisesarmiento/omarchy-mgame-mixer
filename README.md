@@ -30,6 +30,20 @@ Plugin id: `csarmiento.mgame-mixer`. The UI is available in English and Spanish.
 - "Hardware pads" switch: runs a small listener (systemd user service) so the physical pads
   trigger the samples. Pressing a pad again restarts its sound.
 
+**FX tab**
+- Browses the Mac voice and mic libraries, and the current reading from the unit.
+- Does not apply an effect to the unit.
+
+**Apps tab**
+- Routes a new playback stream when a substring rule matches its name or program.
+- The watcher is a separate user service. It does not move a stream you already placed by hand.
+
+**Profiles tab**
+- Saves and restores sink volumes, mic processing, those app rules, mixer gains, and the last
+  LED preset applied from this plugin.
+- Does not change phantom power, channel pairs, or effects.
+- Loading a profile can change live audio.
+
 ## Install
 
 ```bash

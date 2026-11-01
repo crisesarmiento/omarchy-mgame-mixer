@@ -72,6 +72,294 @@ Panel {
     return c && c.label ? String(c.label) : control
   }
 
+  // FX, apps y perfiles. La data vive en el widget; acá solo se elige y se confirma.
+  property string confirmProfile: ""
+  property string appsField: "both"
+  property string appsSink: "game"
+  property bool appsMatchReject: false
+  property bool profileNameReject: false
+
+  readonly property var fxVoice: hostWidget && hostWidget.fxPresets ? hostWidget.fxPresets.voice : []
+  readonly property var fxMic: hostWidget && hostWidget.fxPresets ? hostWidget.fxPresets.mic : []
+  readonly property var fxNowRows: hostWidget && hostWidget.fxNow ? hostWidget.fxNow : []
+  readonly property var appRules: hostWidget && hostWidget.appRules ? hostWidget.appRules : []
+  readonly property var profileNames: hostWidget && hostWidget.profileNames ? hostWidget.profileNames : []
+  readonly property string fxPickKind: hostWidget ? hostWidget.fxDetailKind : ""
+  readonly property string fxPickName: hostWidget ? hostWidget.fxDetailName : ""
+  readonly property var fxDetail: hostWidget ? hostWidget.fxDetail : null
+  readonly property var fxEffectLines: fxEffects(fxDetail)
+  readonly property var fxRecordLines: fxRecords(fxDetail)
+  readonly property var profileLineList: {
+    var hw = root.hostWidget
+    var parsed = hw ? hw.profileResult : null
+    var err = hw ? hw.profileResultError : ""
+    var action = hw ? hw.profileAction : ""
+    var savedName = hw ? hw.profileResultName : ""
+    return root.buildProfileLines(parsed, err, action, savedName)
+  }
+
+  function selectTab(v) {
+    root.tab = v
+    if (appsMatch) appsMatch.focus = false
+    if (profileName) profileName.focus = false
+    if (!root.hostWidget) return
+    if (v === "fx") root.hostWidget.refreshFx()
+    else if (v === "apps") root.hostWidget.refreshApps()
+    else if (v === "profiles") root.hostWidget.refreshProfiles()
+  }
+
+  function profileNameOk(name) {
+    return /^[A-Za-z0-9][A-Za-z0-9 _-]{0,40}$/.test(String(name || ""))
+  }
+
+  function submitAppRule() {
+    var text = appsMatch.text.replace(/^\s+|\s+$/g, "")
+    if (text === "") {
+      root.appsMatchReject = true
+      return
+    }
+    root.appsMatchReject = false
+    if (root.hostWidget) root.hostWidget.addAppRule(text, root.appsField, root.appsSink)
+  }
+
+  function submitProfile() {
+    var name = profileName.text
+    if (!root.profileNameOk(name)) {
+      root.profileNameReject = true
+      return
+    }
+    root.profileNameReject = false
+    if (root.hostWidget) root.hostWidget.saveProfile(name)
+  }
+
+  function fxRaw(value) {
+    if (value === null || value === undefined) return ""
+    if (!root.hostWidget) return String(value)
+    var s = root.hostWidget.fxScalar(value)
+    return s.length > 160 ? s.slice(0, 157) + "…" : s
+  }
+
+  function fxEffects(detail) {
+    if (!detail) return []
+    var list = detail.effects || null
+    if (!Array.isArray(list) && detail.preset && detail.preset.effects) list = detail.preset.effects
+    if (!Array.isArray(list)) return []
+    var out = []
+    for (var i = 0; i < list.length; i++) {
+      var item = list[i]
+      if (item && typeof item === "object" && item.name) out.push(String(item.name))
+      else if (typeof item === "string" && item !== "") out.push(item)
+      else out.push(root.fxRaw(item) || strings.t("fx.unnamed"))
+    }
+    return out
+  }
+
+  function fxRecords(detail) {
+    if (!detail) return []
+    var list = null
+    if (Array.isArray(detail.records)) list = detail.records
+    else if (Array.isArray(detail.mics)) list = detail.mics
+    else if (Array.isArray(detail.mic)) list = detail.mic
+    else if (detail.mic && typeof detail.mic === "object") list = [detail.mic]
+    if (!list) return []
+    var out = []
+    for (var i = 0; i < list.length; i++) {
+      var row = list[i]
+      if (typeof row === "string") out.push(row)
+      else if (row && row.name) out.push(String(row.name))
+      else if (row && row.label) out.push(String(row.label))
+      else out.push(strings.t("fx.unnamed") + " " + String(i + 1) + (row ? "  " + root.fxRaw(row) : ""))
+    }
+    return out
+  }
+
+  function profileStepLabel(key) {
+    var map = {
+      volumes: "profiles.step.volumes",
+      sinks: "profiles.step.volumes",
+      mic: "profiles.step.mic",
+      rules: "profiles.step.rules",
+      apps: "profiles.step.rules",
+      gains: "profiles.step.gains",
+      leds: "profiles.step.leds",
+      led: "profiles.step.leds",
+      ledPreset: "profiles.step.leds"
+    }
+    return map[key] ? strings.t(map[key]) : key
+  }
+
+  function micLiveFalse(value) {
+    return !!(value && typeof value === "object" && value.live === false)
+  }
+
+  function gainsText(value) {
+    if (value === null || value === undefined) return ""
+    if (typeof value === "number") return strings.t("profiles.gainsSent").arg(value)
+    if (typeof value === "string") {
+      if (value === "skipped") return strings.t("profiles.gainsSkipped")
+      if (value === "saved") return ""
+      var pair = value.match(/(\d+)\s*\/\s*(\d+)/)
+      if (pair) return strings.t("profiles.gainsSentOf").arg(pair[1]).arg(pair[2])
+      var one = value.match(/(\d+)/)
+      if (one && /sent/i.test(value)) return strings.t("profiles.gainsSent").arg(one[1])
+      return ""
+    }
+    if (typeof value !== "object" || !("sent" in value)) return ""
+    if (typeof value.total === "number") return strings.t("profiles.gainsSentOf").arg(value.sent).arg(value.total)
+    if (typeof value.of === "number") return strings.t("profiles.gainsSentOf").arg(value.sent).arg(value.of)
+    return strings.t("profiles.gainsSent").arg(value.sent)
+  }
+
+  function ledText(value) {
+    if (value === null || value === "skipped") return strings.t("profiles.noLed")
+    if (value === "failed") return strings.t("profiles.failed")
+    if (value === "ok") return strings.t("profiles.stepOk")
+    if (typeof value === "string" && value !== "") return value
+    if (!value || typeof value !== "object") return ""
+    if (value.preset === null || value.ledPreset === null) return strings.t("profiles.noLed")
+    if (value.preset) return String(value.preset)
+    if (typeof value.name === "string" && value.name !== "") return value.name
+    if (value.ok === false) return String(value.error || strings.t("profiles.failed"))
+    if (value.ok === true) return strings.t("profiles.stepOk")
+    return ""
+  }
+
+  function stepStatus(value) {
+    if (value === null || value === undefined) return strings.t("profiles.stepOk")
+    if (typeof value === "string") return /applied/i.test(value) ? strings.t("profiles.stepOk") : value
+    if (typeof value !== "object") return String(value)
+    if (value.ok === false) return String(value.error || strings.t("profiles.failed"))
+    return strings.t("profiles.stepOk")
+  }
+
+  function formatStep(key, value) {
+    if (key === "gains") {
+      var sent = root.gainsText(value)
+      return sent || (root.profileStepLabel(key) + " · " + root.stepStatus(value))
+    }
+    if (key === "leds" || key === "led" || key === "ledPreset") {
+      var led = root.ledText(value)
+      return root.profileStepLabel(key) + " · " + (led || root.stepStatus(value))
+    }
+    return root.profileStepLabel(key) + " · " + root.stepStatus(value)
+  }
+
+  function stepEntries(parsed) {
+    if (!parsed || typeof parsed !== "object") return []
+    var order = ["volumes", "sinks", "mic", "rules", "apps", "gains", "leds", "led", "ledPreset"]
+    var skip = { ok: 1, error: 1, name: 1, steps: 1, result: 1, action: 1, undo: 1, deviceUpdated: 1, age: 1, step: 1, version: 1 }
+    var bag = (parsed.steps && typeof parsed.steps === "object") ? parsed.steps : parsed
+    var topLevel = bag === parsed
+    if (Array.isArray(bag)) {
+      var fromList = []
+      for (var i = 0; i < bag.length; i++) {
+        var step = bag[i]
+        if (!step || typeof step !== "object") continue
+        var id = String(step.id || step.step || "")
+        if (!id) id = String(step.name || "")
+        if (!id || skip[id]) continue
+        fromList.push({ key: id, value: step })
+      }
+      return fromList
+    }
+    var out = []
+    var seen = {}
+    for (var o = 0; o < order.length; o++) {
+      if (order[o] in bag) {
+        out.push({ key: order[o], value: bag[order[o]] })
+        seen[order[o]] = true
+      }
+    }
+    if (topLevel) return out
+    var keys = Object.keys(bag)
+    for (var k = 0; k < keys.length; k++) {
+      if (seen[keys[k]] || skip[keys[k]]) continue
+      out.push({ key: keys[k], value: bag[keys[k]] })
+    }
+    return out
+  }
+
+  function buildProfileLines(parsed, err, action, savedName) {
+    var lines = []
+    function add(text, urgent) {
+      if (text) lines.push({ text: String(text), urgent: !!urgent })
+    }
+    var busy = err === "busy" || (parsed && parsed.error === "busy")
+    if (busy) add(strings.t("profiles.busy"), true)
+    else if (err) add(err, true)
+    else if (parsed && parsed.ok === false) add(String(parsed.error || strings.t("profiles.failed")), true)
+    if (!busy && !err && parsed && parsed.ok === true && action === "profile-save") {
+      add(strings.t("profiles.saved").arg(savedName), false)
+      if (parsed.gains === null) add(strings.t("profiles.gainsMissing"), false)
+      if (parsed.ledPreset === null) add(strings.t("profiles.noLed"), false)
+    }
+    if (!busy && !err && parsed && parsed.ok === true && action === "profile-delete")
+      add(strings.t("profiles.deleted").arg(savedName), false)
+    if (action === "profile-load" && parsed && !parsed.steps) {
+      root.appendLoadLines(add, parsed, err, busy)
+      return lines
+    }
+    var saidMic = false
+    var entries = (action === "profile-load" || (parsed && parsed.steps)) ? root.stepEntries(parsed) : []
+    for (var i = 0; i < entries.length; i++) {
+      var key = entries[i].key
+      var value = entries[i].value
+      if (key === "mic" && root.micLiveFalse(value)) {
+        add(strings.t("profiles.micNotLive"), false)
+        saidMic = true
+        continue
+      }
+      var failed = value && typeof value === "object" && value.ok === false
+      add(root.formatStep(key, value), failed)
+    }
+    if (!saidMic && parsed && root.micLiveFalse(parsed.mic))
+      add(strings.t("profiles.micNotLive"), false)
+    return lines
+  }
+
+  function appendLoadLines(add, parsed, err, busy) {
+    var failedAt = parsed && parsed.step ? String(parsed.step) : ""
+    var done = parsed && parsed.ok === true && !err && !busy
+    var order = ["volumes", "mic", "rules", "gains", "ledPreset"]
+    function passed(key) {
+      if (done) return true
+      var fail = order.indexOf(failedAt)
+      var here = order.indexOf(key)
+      return fail > 0 && here >= 0 && here < fail
+    }
+    if (done || passed("volumes"))
+      add(root.profileStepLabel("volumes") + " · " + strings.t("profiles.stepOk"), false)
+    else if (failedAt === "volumes")
+      add(root.profileStepLabel("volumes") + " · " + strings.t("profiles.failed"), true)
+    if (parsed && root.micLiveFalse(parsed.mic))
+      add(strings.t("profiles.micNotLive"), false)
+    else if (done || (parsed && parsed.mic && parsed.mic.live === true))
+      add(root.profileStepLabel("mic") + " · " + strings.t("profiles.stepOk"), false)
+    else if (failedAt === "mic")
+      add(root.profileStepLabel("mic") + " · " + strings.t("profiles.failed"), true)
+    if (done || passed("rules"))
+      add(root.profileStepLabel("rules") + " · " + strings.t("profiles.stepOk"), false)
+    else if (failedAt === "rules")
+      add(root.profileStepLabel("rules") + " · " + strings.t("profiles.failed"), true)
+    if (parsed && "gains" in parsed && parsed.gains !== undefined && parsed.gains !== null)
+      add(root.formatStep("gains", parsed.gains), failedAt === "gains")
+    else if (failedAt === "gains")
+      add(root.profileStepLabel("gains") + " · " + strings.t("profiles.failed"), true)
+    if (parsed && (parsed.ledPreset === "skipped" || parsed.ledPreset === null))
+      add(strings.t("profiles.noLed"), false)
+    else if (parsed && "ledPreset" in parsed)
+      add(root.formatStep("ledPreset", parsed.ledPreset), parsed.ledPreset === "failed" || failedAt === "ledPreset")
+    else if (failedAt === "ledPreset")
+      add(root.profileStepLabel("ledPreset") + " · " + strings.t("profiles.failed"), true)
+  }
+
+  function profileWorkingText() {
+    var action = root.hostWidget ? root.hostWidget.profileBusyAction : ""
+    if (action === "profile-save") return strings.t("profiles.saving")
+    if (action === "profile-delete") return strings.t("profiles.deleting")
+    return strings.t("profiles.loading")
+  }
+
   property string tab: "mixer"
   property int selectedPad: 1
   // Juego de pads que se está viendo/editando: página (1/2) + banco (A/B).
@@ -88,6 +376,9 @@ Panel {
       hostWidget.refresh()
       hostWidget.refreshDev()
       hostWidget.loadDevStatic()
+      hostWidget.refreshFx()
+      hostWidget.refreshApps()
+      hostWidget.refreshProfiles()
     }
   }
   function close() { root.controller.hide() }
@@ -135,6 +426,7 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
+      blocked: appsMatch.activeFocus || profileName.activeFocus
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
@@ -204,20 +496,39 @@ Panel {
 
         PanelSeparator { foreground: root.foreground }
 
-        ButtonGroup {
-          focusable: false
-          foreground: root.foreground
-          fontFamily: root.fontFamily
-          value: root.tab
-          options: [
-            { value: "mixer", label: strings.t("tab.mixer") },
-            { value: "mic", label: strings.t("tab.mic") },
-            { value: "sampler", label: strings.t("tab.sampler") },
-            { value: "routing", label: strings.t("tab.routing") },
-            { value: "lights", label: strings.t("tab.lights") },
-            { value: "device", label: strings.t("tab.device") }
-          ]
-          onChanged: function(v) { root.tab = v }
+        // Nueve pestañas no entran en una fila a este ancho. Mismo control, segunda fila.
+        Column {
+          width: parent.width
+          spacing: Style.space(6)
+
+          ButtonGroup {
+            focusable: false
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            value: root.tab
+            options: [
+              { value: "mixer", label: strings.t("tab.mixer") },
+              { value: "mic", label: strings.t("tab.mic") },
+              { value: "sampler", label: strings.t("tab.sampler") },
+              { value: "routing", label: strings.t("tab.routing") },
+              { value: "lights", label: strings.t("tab.lights") },
+              { value: "device", label: strings.t("tab.device") }
+            ]
+            onChanged: function(v) { root.selectTab(v) }
+          }
+
+          ButtonGroup {
+            focusable: false
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            value: root.tab
+            options: [
+              { value: "fx", label: strings.t("tab.fx") },
+              { value: "apps", label: strings.t("tab.apps") },
+              { value: "profiles", label: strings.t("tab.profiles") }
+            ]
+            onChanged: function(v) { root.selectTab(v) }
+          }
         }
 
         // ================= Mixer =================
@@ -1106,7 +1417,740 @@ Panel {
             font.pixelSize: Style.font.caption
           }
         }
+
+        // ================= FX (solo lectura) =================
+        Column {
+          visible: root.tab === "fx"
+          width: parent.width
+          spacing: Style.space(8)
+
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("fx.hint")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          Text {
+            visible: !!root.hostWidget && (root.hostWidget.fxError !== "" || root.hostWidget.fxDown)
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: root.hostWidget && root.hostWidget.fxError !== "" ? root.hostWidget.fxError : strings.t("fx.unavailable")
+            color: root.urgentColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          PanelSectionHeader {
+            text: strings.t("fx.voice")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+          Text {
+            visible: !!root.hostWidget && root.hostWidget.fxPresetsSeen && root.fxVoice.length === 0
+              && root.hostWidget.fxError === "" && !root.hostWidget.fxDown
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("fx.emptyVoice")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          Flickable {
+            id: voiceFlick
+            visible: root.fxVoice.length > 0
+            width: parent.width
+            height: Math.min(voiceFlow.implicitHeight, Style.space(92))
+            contentWidth: width
+            contentHeight: voiceFlow.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            Flow {
+              id: voiceFlow
+              width: voiceFlick.width
+              spacing: Style.space(6)
+              Repeater {
+                model: root.fxVoice
+                Button {
+                  required property string modelData
+                  text: modelData
+                  selected: root.fxPickKind === "voice" && root.fxPickName === modelData
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                  fontSize: Style.font.bodySmall
+                  bordered: true
+                  onClicked: if (root.hostWidget) root.hostWidget.loadFxPreset("voice", modelData)
+                }
+              }
+            }
+          }
+
+          PanelSectionHeader {
+            text: strings.t("fx.mic")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+          Text {
+            visible: !!root.hostWidget && root.hostWidget.fxPresetsSeen && root.fxMic.length === 0
+              && root.hostWidget.fxError === "" && !root.hostWidget.fxDown
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("fx.emptyMic")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          Flickable {
+            id: micFxFlick
+            visible: root.fxMic.length > 0
+            width: parent.width
+            height: Math.min(micFxFlow.implicitHeight, Style.space(92))
+            contentWidth: width
+            contentHeight: micFxFlow.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            Flow {
+              id: micFxFlow
+              width: micFxFlick.width
+              spacing: Style.space(6)
+              Repeater {
+                model: root.fxMic
+                Button {
+                  required property string modelData
+                  text: modelData
+                  selected: root.fxPickKind === "mic" && root.fxPickName === modelData
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                  fontSize: Style.font.bodySmall
+                  bordered: true
+                  onClicked: if (root.hostWidget) root.hostWidget.loadFxPreset("mic", modelData)
+                }
+              }
+            }
+          }
+
+          Text {
+            visible: root.fxPickKind === "" && (root.fxVoice.length > 0 || root.fxMic.length > 0)
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("fx.pick")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          Column {
+            visible: root.fxPickKind !== ""
+            width: parent.width
+            spacing: Style.space(6)
+
+            Text {
+              visible: !!root.hostWidget && (root.hostWidget.fxDetailError !== "" || root.hostWidget.fxDetailDown)
+              width: parent.width
+              textFormat: Text.PlainText
+              wrapMode: Text.WordWrap
+              text: root.hostWidget && root.hostWidget.fxDetailError !== "" ? root.hostWidget.fxDetailError : strings.t("fx.unavailable")
+              color: root.urgentColor
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+            }
+            Text {
+              visible: !!root.hostWidget && root.hostWidget.fxDetailLoading && !root.fxDetail
+              width: parent.width
+              textFormat: Text.PlainText
+              text: strings.t("fx.loading")
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+            }
+            Text {
+              visible: !!root.hostWidget && root.fxPickKind !== "" && !root.hostWidget.fxDetailLoading && !!root.fxDetail
+                && root.fxEffectLines.length === 0 && root.fxRecordLines.length === 0
+                && root.hostWidget.fxDetailError === "" && !root.hostWidget.fxDetailDown
+              width: parent.width
+              textFormat: Text.PlainText
+              wrapMode: Text.WordWrap
+              text: strings.t("fx.detailEmpty")
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+            }
+
+            PanelSectionHeader {
+              visible: root.fxEffectLines.length > 0
+              text: strings.t("fx.effects")
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+            }
+            Flickable {
+              id: fxEffectFlick
+              visible: root.fxEffectLines.length > 0
+              width: parent.width
+              height: Math.min(fxEffectCol.implicitHeight, Style.space(120))
+              contentWidth: width
+              contentHeight: fxEffectCol.implicitHeight
+              clip: true
+              boundsBehavior: Flickable.StopAtBounds
+              Column {
+                id: fxEffectCol
+                width: fxEffectFlick.width
+                spacing: Style.space(2)
+                Repeater {
+                  model: root.fxEffectLines
+                  Text {
+                    required property string modelData
+                    width: parent.width
+                    textFormat: Text.PlainText
+                    text: modelData
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.bodySmall
+                    elide: Text.ElideRight
+                  }
+                }
+              }
+            }
+
+            PanelSectionHeader {
+              visible: root.fxRecordLines.length > 0
+              text: strings.t("fx.records")
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+            }
+            Flickable {
+              id: fxRecFlick
+              visible: root.fxRecordLines.length > 0
+              width: parent.width
+              height: Math.min(fxRecCol.implicitHeight, Style.space(120))
+              contentWidth: width
+              contentHeight: fxRecCol.implicitHeight
+              clip: true
+              boundsBehavior: Flickable.StopAtBounds
+              Column {
+                id: fxRecCol
+                width: fxRecFlick.width
+                spacing: Style.space(2)
+                Repeater {
+                  model: root.fxRecordLines
+                  Text {
+                    required property string modelData
+                    width: parent.width
+                    textFormat: Text.PlainText
+                    wrapMode: Text.WordWrap
+                    text: modelData
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.bodySmall
+                  }
+                }
+              }
+            }
+          }
+
+          PanelSeparator { foreground: root.foreground }
+
+          PanelSectionHeader {
+            text: strings.t("fx.current")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("fx.currentHint")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+          Text {
+            visible: !!root.hostWidget && (root.hostWidget.fxNowError !== "" || root.hostWidget.fxNowDown)
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: root.hostWidget && root.hostWidget.fxNowError !== "" ? root.hostWidget.fxNowError : strings.t("fx.unavailable")
+            color: root.urgentColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          Text {
+            visible: !!root.hostWidget && root.hostWidget.fxNowSeen && root.fxNowRows.length === 0
+              && root.hostWidget.fxNowError === "" && !root.hostWidget.fxNowDown
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("fx.noCurrent")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          Flickable {
+            id: fxNowFlick
+            visible: root.fxNowRows.length > 0
+            width: parent.width
+            height: Math.min(fxNowCol.implicitHeight, Style.space(160))
+            contentWidth: width
+            contentHeight: fxNowCol.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            Column {
+              id: fxNowCol
+              width: fxNowFlick.width
+              spacing: Style.space(6)
+              Repeater {
+                model: root.fxNowRows
+                FxRow {
+                  required property var modelData
+                  label: String(modelData.label || "")
+                  value: String(modelData.value || "")
+                  labeled: modelData.labeled === true
+                }
+              }
+            }
+          }
+        }
+
+        // ================= Apps =================
+        Column {
+          visible: root.tab === "apps"
+          width: parent.width
+          spacing: Style.space(8)
+
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("apps.hint")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          Item {
+            width: parent.width
+            implicitHeight: Math.max(watchText.implicitHeight, watchSwitch.implicitHeight)
+
+            Column {
+              id: watchText
+              anchors.left: parent.left
+              anchors.right: watchSwitch.left
+              anchors.rightMargin: Style.space(12)
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(2)
+              Text {
+                width: parent.width
+                textFormat: Text.PlainText
+                text: strings.t("apps.watch")
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                elide: Text.ElideRight
+              }
+              Text {
+                width: parent.width
+                textFormat: Text.PlainText
+                wrapMode: Text.WordWrap
+                text: root.hostWidget && root.hostWidget.appsWatch ? strings.t("apps.watching") : strings.t("apps.stopped")
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+            }
+
+            ToggleSwitch {
+              id: watchSwitch
+              checked: !!root.hostWidget && root.hostWidget.appsWatch
+              foreground: root.foreground
+              accent: Color.accent
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              onToggled: if (root.hostWidget) root.hostWidget.setAppsWatch(!root.hostWidget.appsWatch)
+            }
+          }
+
+          Text {
+            visible: !!root.hostWidget && (root.hostWidget.appsError !== "" || root.hostWidget.appsDown)
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: root.hostWidget && root.hostWidget.appsError !== "" ? root.hostWidget.appsError : strings.t("apps.unavailable")
+            color: root.urgentColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          PanelSectionHeader {
+            text: strings.t("apps.rules")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+          Text {
+            visible: !!root.hostWidget && root.hostWidget.appRulesSeen && root.appRules.length === 0
+              && root.hostWidget.appsError === "" && !root.hostWidget.appsDown
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("apps.empty")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          Flickable {
+            id: ruleFlick
+            visible: root.appRules.length > 0
+            width: parent.width
+            height: Math.min(ruleCol.implicitHeight, Style.space(160))
+            contentWidth: width
+            contentHeight: ruleCol.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            Column {
+              id: ruleCol
+              width: ruleFlick.width
+              spacing: Style.space(4)
+              Repeater {
+                model: root.appRules
+                RuleRow {
+                  required property var modelData
+                  match: String(modelData.match || "")
+                  field: String(modelData.field || "")
+                  sink: String(modelData.sink || "")
+                }
+              }
+            }
+          }
+
+          PanelSeparator { foreground: root.foreground }
+
+          PanelSectionHeader {
+            text: strings.t("apps.addHeader")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+          TextField {
+            id: appsMatch
+            width: parent.width
+            placeholderText: strings.t("apps.matchPlaceholder")
+            foreground: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            maximumLength: 80
+            onTextChanged: root.appsMatchReject = false
+            onAccepted: root.submitAppRule()
+            Keys.onEscapePressed: function(event) { focus = false; event.accepted = true }
+          }
+          Text {
+            textFormat: Text.PlainText
+            text: strings.t("apps.where")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+          ButtonGroup {
+            focusable: false
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            value: root.appsField
+            options: [
+              { value: "binary", label: strings.t("apps.field.binary") },
+              { value: "name", label: strings.t("apps.field.name") },
+              { value: "both", label: strings.t("apps.field.both") }
+            ]
+            onChanged: function(v) { root.appsField = v }
+          }
+          Text {
+            textFormat: Text.PlainText
+            text: strings.t("apps.output")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+          Row {
+            id: sinkPick
+            width: parent.width
+            spacing: Style.space(4)
+            Repeater {
+              model: root.outKeys
+              Button {
+                required property string modelData
+                width: (sinkPick.width - sinkPick.spacing * 3) / 4
+                text: strings.t("node." + modelData)
+                selected: root.appsSink === modelData
+                bordered: true
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                fontSize: Style.font.bodySmall
+                horizontalPadding: Style.space(4)
+                onClicked: root.appsSink = modelData
+              }
+            }
+          }
+          Row {
+            spacing: Style.space(8)
+            Button {
+              text: strings.t("apps.add")
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              bordered: true
+              onClicked: root.submitAppRule()
+            }
+          }
+          Text {
+            visible: root.appsMatchReject
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("apps.matchEmpty")
+            color: root.urgentColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          PanelSeparator { foreground: root.foreground }
+
+          Button {
+            text: root.hostWidget && root.hostWidget.appsApplying ? strings.t("apps.applying") : strings.t("apps.apply")
+            enabled: !root.hostWidget || !root.hostWidget.appsApplying
+            opacity: enabled ? 1.0 : 0.6
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            bordered: true
+            onClicked: if (root.hostWidget) root.hostWidget.applyApps()
+          }
+          Text {
+            visible: !!root.hostWidget && root.hostWidget.appsApplyError !== ""
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: root.hostWidget ? root.hostWidget.appsApplyError : ""
+            color: root.urgentColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          Text {
+            visible: !!root.hostWidget && root.hostWidget.appsMoved >= 0 && root.hostWidget.appsSkipped >= 0
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("apps.result").arg(root.hostWidget ? root.hostWidget.appsMoved : 0).arg(root.hostWidget ? root.hostWidget.appsSkipped : 0)
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          Text {
+            visible: !!root.hostWidget && root.hostWidget.appsSkipped < 0 && root.hostWidget.appsMoved >= 0 && root.hostWidget.appsFailed >= 0
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("apps.resultFailed").arg(root.hostWidget ? root.hostWidget.appsMoved : 0).arg(root.hostWidget ? root.hostWidget.appsFailed : 0)
+            color: root.hostWidget && root.hostWidget.appsFailed > 0 ? root.urgentColor : root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          Text {
+            visible: !!root.hostWidget && root.hostWidget.appsApplyBare
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("apps.noCounts")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+        }
+
+        // ================= Profiles =================
+        Column {
+          visible: root.tab === "profiles"
+          width: parent.width
+          spacing: Style.space(8)
+
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("profiles.hint")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          TextField {
+            id: profileName
+            width: parent.width
+            placeholderText: strings.t("profiles.namePlaceholder")
+            foreground: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            maximumLength: 41
+            onTextChanged: root.profileNameReject = false
+            onAccepted: root.submitProfile()
+            Keys.onEscapePressed: function(event) { focus = false; event.accepted = true }
+          }
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("profiles.nameHint")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+          Row {
+            spacing: Style.space(8)
+            Button {
+              text: strings.t("profiles.save")
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              bordered: true
+              onClicked: root.submitProfile()
+            }
+          }
+          Text {
+            visible: root.profileNameReject
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("profiles.invalid")
+            color: root.urgentColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          Text {
+            visible: !!root.hostWidget && (root.hostWidget.profilesError !== "" || root.hostWidget.profilesDown)
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: root.hostWidget && root.hostWidget.profilesError !== "" ? root.hostWidget.profilesError : strings.t("profiles.unavailable")
+            color: root.urgentColor
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          PanelSectionHeader {
+            text: strings.t("profiles.list")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+          Text {
+            visible: !!root.hostWidget && root.hostWidget.profilesSeen && root.profileNames.length === 0
+              && root.hostWidget.profilesError === "" && !root.hostWidget.profilesDown
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("profiles.empty")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          Flickable {
+            id: profileFlick
+            visible: root.profileNames.length > 0
+            width: parent.width
+            height: Math.min(profileCol.implicitHeight, Style.space(160))
+            contentWidth: width
+            contentHeight: profileCol.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            Column {
+              id: profileCol
+              width: profileFlick.width
+              spacing: Style.space(4)
+              Repeater {
+                model: root.profileNames
+                ProfileRow {
+                  required property string modelData
+                  name: modelData
+                }
+              }
+            }
+          }
+
+          Column {
+            visible: root.confirmProfile !== ""
+            width: parent.width
+            spacing: Style.space(6)
+            Text {
+              width: parent.width
+              textFormat: Text.PlainText
+              wrapMode: Text.WordWrap
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              text: strings.t("profiles.confirm").arg(root.confirmProfile)
+            }
+            Row {
+              spacing: Style.space(8)
+              Button {
+                text: strings.t("profiles.load")
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                bordered: true
+                selected: true
+                onClicked: {
+                  var name = root.confirmProfile
+                  root.confirmProfile = ""
+                  if (root.hostWidget) root.hostWidget.loadProfile(name)
+                }
+              }
+              Button {
+                text: strings.t("routing.cancel")
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                bordered: true
+                onClicked: root.confirmProfile = ""
+              }
+            }
+          }
+
+          PanelSectionHeader {
+            visible: root.profileLineList.length > 0 || (!!root.hostWidget && root.hostWidget.profileBusy)
+            text: strings.t("profiles.result")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+          Text {
+            visible: !!root.hostWidget && root.hostWidget.profileBusy && root.profileLineList.length === 0
+            width: parent.width
+            textFormat: Text.PlainText
+            text: root.profileWorkingText()
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          Repeater {
+            model: root.profileLineList
+            Text {
+              required property var modelData
+              width: parent.width
+              textFormat: Text.PlainText
+              wrapMode: Text.WordWrap
+              text: modelData.text
+              color: modelData.urgent ? root.urgentColor : root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+            }
+          }
+        }
       }
+    }
+  }
+
+  Connections {
+    target: root.hostWidget
+    function onAppsAdded() {
+      appsMatch.text = ""
+      root.appsMatchReject = false
     }
   }
 
@@ -1592,6 +2636,135 @@ Panel {
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
       onClicked: root.hostWidget.sampleAssign(root.selectedPad, sample.fileName, root.viewSet)
+    }
+  }
+
+  // Lectura de un knob o bloque. Sin etiqueta, el id y el valor crudo.
+  component FxRow: Column {
+    id: fxRow
+    property string label: ""
+    property string value: ""
+    property bool labeled: false
+
+    width: parent.width
+    spacing: Style.space(1)
+
+    Text {
+      width: parent.width
+      textFormat: Text.PlainText
+      text: fxRow.label !== "" ? fxRow.label : strings.t("fx.unnamed")
+      color: fxRow.labeled ? root.foreground : root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.bodySmall
+      font.bold: fxRow.labeled
+      elide: Text.ElideRight
+    }
+    Text {
+      width: parent.width
+      textFormat: Text.PlainText
+      wrapMode: Text.WordWrap
+      text: fxRow.value
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+  }
+
+  // Una regla: texto, dónde busca y a qué salida manda. Quitar no manda un match vacío.
+  component RuleRow: Item {
+    id: rule
+    property string match: ""
+    property string field: ""
+    property string sink: ""
+
+    width: parent.width
+    implicitHeight: Math.max(ruleMatch.implicitHeight, ruleRemove.implicitHeight)
+
+    Text {
+      id: ruleMatch
+      anchors.left: parent.left
+      anchors.right: ruleMeta.left
+      anchors.rightMargin: Style.space(8)
+      anchors.verticalCenter: parent.verticalCenter
+      textFormat: Text.PlainText
+      text: rule.match
+      color: root.foreground
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.body
+      elide: Text.ElideRight
+    }
+    Text {
+      id: ruleMeta
+      anchors.right: ruleRemove.left
+      anchors.rightMargin: Style.space(8)
+      anchors.verticalCenter: parent.verticalCenter
+      textFormat: Text.PlainText
+      text: strings.t("apps.field." + rule.field, rule.field) + " · " + strings.t("node." + rule.sink, rule.sink)
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+    Button {
+      id: ruleRemove
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      text: strings.t("apps.remove")
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+      fontSize: Style.font.bodySmall
+      bordered: true
+      onClicked: if (root.hostWidget) root.hostWidget.removeAppRule(rule.match, rule.field)
+    }
+  }
+
+  // Un perfil guardado. Cargar pide confirmación; borrar no toca la alimentación fantasma.
+  component ProfileRow: Item {
+    id: profile
+    property string name: ""
+
+    width: parent.width
+    implicitHeight: Math.max(profileLabel.implicitHeight, profileLoad.implicitHeight)
+
+    Text {
+      id: profileLabel
+      anchors.left: parent.left
+      anchors.right: profileLoad.left
+      anchors.rightMargin: Style.space(8)
+      anchors.verticalCenter: parent.verticalCenter
+      textFormat: Text.PlainText
+      text: profile.name
+      color: root.foreground
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.body
+      font.bold: root.confirmProfile === profile.name
+      elide: Text.ElideRight
+    }
+    Button {
+      id: profileDelete
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      text: strings.t("profiles.delete")
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+      fontSize: Style.font.bodySmall
+      bordered: true
+      onClicked: {
+        if (root.confirmProfile === profile.name) root.confirmProfile = ""
+        if (root.hostWidget) root.hostWidget.deleteProfile(profile.name)
+      }
+    }
+    Button {
+      id: profileLoad
+      anchors.right: profileDelete.left
+      anchors.rightMargin: Style.space(6)
+      anchors.verticalCenter: parent.verticalCenter
+      text: strings.t("profiles.load")
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+      fontSize: Style.font.bodySmall
+      bordered: true
+      selected: root.confirmProfile === profile.name
+      onClicked: root.confirmProfile = profile.name
     }
   }
 }

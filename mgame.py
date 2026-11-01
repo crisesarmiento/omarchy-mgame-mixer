@@ -48,6 +48,24 @@ Dispositivo (JSON por stdout, ver docs/device-api.md)
   dev-led CONTROL ACTIVE IDLE [MODE]   color de un LED de botón/pad
   dev-led-presets                 lista de presets de LEDs
   dev-led-preset NOMBRE           aplica un preset de LEDs
+  dev-fx                          lectura de knob y bloques (no envía nada)
+  dev-fx-presets                  lista de presets de voz y de mic
+  dev-fx-preset voice|mic NAME    contenido de un preset (no lo aplica)
+
+Apps (JSON por stdout; apps-watch es el servicio, no el panel)
+  apps-rules                      lista las reglas de enrutado
+  apps-rule-set MATCH FIELD SINK  agrega o reemplaza una regla
+  apps-rule-del MATCH FIELD       borra una regla
+  apps-apply                      aplica las reglas una vez (pase completo)
+  apps-watch                      vigila sink-inputs nuevos (no lo llama el panel)
+  apps-watch-enable               instala y arranca mgame-mixer-apps.service
+  apps-watch-disable              lo detiene y lo desactiva
+
+Perfiles (JSON por stdout)
+  profile-list                    nombres (oculta los que empiezan con _)
+  profile-save NAME               guarda volúmenes, mic, reglas, ganancias y LED
+  profile-load NAME               restaura un perfil (o _before-restore)
+  profile-delete NAME             borra un perfil (rechaza un _ inicial)
 
 PARES = ocho pares separados por coma, en este orden:
   game,chat,sampler,system,in_stream,in_alt,in_chat,in_sampler
@@ -59,6 +77,8 @@ import subprocess
 import sys
 import threading
 import time
+
+import mgame_lock
 
 HOME = os.path.expanduser("~")
 CONF_DIR = os.path.join(HOME, ".config", "pipewire", "pipewire.conf.d")
@@ -74,6 +94,8 @@ PID_DIR = os.path.join(LOG_DIR, "pids")
 SHIPPED_PADS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pads.json")
 UNIT_NAME = "mgame-mixer-pads.service"
 UNIT_PATH = os.path.join(HOME, ".config", "systemd", "user", UNIT_NAME)
+APPS_UNIT_NAME = "mgame-mixer-apps.service"
+APPS_UNIT_PATH = os.path.join(HOME, ".config", "systemd", "user", APPS_UNIT_NAME)
 SEQ_CLIENT = "M-Game RGB Dual Streaming Port"
 BUTTONS_PATH = os.path.join(CFG_DIR, "buttons.json")
 SHIPPED_BUTTONS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "buttons.json")
@@ -156,6 +178,17 @@ def pactl_json(*args):
         return []
 
 
+# apps-watch sale antes de importar el dispositivo. El resto de los comandos
+# necesita atomic_write, y tiene que ser el mismo objeto que mgame_device.atomic_write.
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "apps-watch":
+    import mgame_apps
+    if len(sys.argv) > 2:
+        print(json.dumps({"ok": False, "error": "uso: apps-watch"}))
+        raise SystemExit(1)
+    mgame_apps.watch()
+    raise SystemExit(1)
+
+
 from mgame_device import atomic_write  # noqa: E402  (única implementación, temporal único)
 
 
@@ -214,9 +247,15 @@ def load_state():
 
 
 def save_state(state):
-    merged = load_json(STATE_PATH, {})  # conserva claves ajenas (p. ej. routeMemory)
-    merged.update(state)
-    atomic_write(STATE_PATH, json.dumps(merged, indent=2, ensure_ascii=False) + "\n")
+    with mgame_lock.exclusive(STATE_PATH):
+        merged = load_json(STATE_PATH, {})  # conserva claves ajenas (p. ej. routeMemory)
+        merged.update(state)
+        atomic_write(STATE_PATH, json.dumps(merged, indent=2, ensure_ascii=False) + "\n")
+
+
+def note_led_preset(name):
+    """dev-led-preset lo registra al tener éxito. Mezcla; no borra routeMemory."""
+    save_state({"ledPreset": name})
 
 
 def mic_params(state):
@@ -857,10 +896,59 @@ def listener_disable():
     run("systemctl", "--user", "disable", "--now", UNIT_NAME, timeout=15)
 
 
+def apps_unit_text(script):
+    return f"""[Unit]
+Description=M-Game Mixer: enruta las apps según app-rules.json
+After=pipewire.service
+
+[Service]
+ExecStart=/usr/bin/python3 -u {script} apps-watch
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
+"""
+
+
+def apps_watch_enable(args):
+    if args:
+        return {"ok": False, "error": "uso: apps-watch-enable"}
+    script = os.path.realpath(__file__)
+    if re.search(r"[\s%$\"'\\]", script):
+        return {"ok": False, "error": "la ruta del plugin tiene caracteres no soportados por systemd"}
+    ensure_dirs()
+    atomic_write(APPS_UNIT_PATH, apps_unit_text(script))
+    rel = run("systemctl", "--user", "daemon-reload", timeout=15)
+    if rel.returncode != 0:
+        return {"ok": False, "error": "systemctl daemon-reload falló"}
+    res = run("systemctl", "--user", "enable", "--now", APPS_UNIT_NAME, timeout=15)
+    if res.returncode != 0:
+        return {"ok": False, "error": "no se pudo activar mgame-mixer-apps.service"}
+    return {"ok": True, "unit": APPS_UNIT_NAME, "watch": apps_watch_state()}
+
+
+def apps_watch_disable(args):
+    if args:
+        return {"ok": False, "error": "uso: apps-watch-disable"}
+    res = run("systemctl", "--user", "disable", "--now", APPS_UNIT_NAME, timeout=15)
+    if res.returncode != 0:
+        return {"ok": False, "error": "no se pudo desactivar mgame-mixer-apps.service"}
+    return {"ok": True, "unit": APPS_UNIT_NAME, "watch": apps_watch_state()}
+
+
+def _unit_state(name, path):
+    enabled = run("systemctl", "--user", "is-enabled", name).stdout.strip() == "enabled"
+    active = run("systemctl", "--user", "is-active", name).stdout.strip() == "active"
+    return {"enabled": enabled, "active": active, "installed": os.path.exists(path)}
+
+
 def listener_state():
-    enabled = run("systemctl", "--user", "is-enabled", UNIT_NAME).stdout.strip() == "enabled"
-    active = run("systemctl", "--user", "is-active", UNIT_NAME).stdout.strip() == "active"
-    return {"enabled": enabled, "active": active, "installed": os.path.exists(UNIT_PATH)}
+    return _unit_state(UNIT_NAME, UNIT_PATH)
+
+
+def apps_watch_state():
+    return _unit_state(APPS_UNIT_NAME, APPS_UNIT_PATH)
 
 
 # ------------------------------- status ------------------------------------
@@ -936,6 +1024,9 @@ DEV_USAGE = {
     "dev-led": "dev-led CONTROL ACTIVE IDLE [MODE]",
     "dev-led-presets": "dev-led-presets",
     "dev-led-preset": "dev-led-preset NAME",
+    "dev-fx": "dev-fx",
+    "dev-fx-presets": "dev-fx-presets",
+    "dev-fx-preset": "dev-fx-preset voice|mic NAME",
 }
 WRITE_GAP = 0.03
 WAIT_REPLIES = 2.0
@@ -961,14 +1052,15 @@ def route_memory():
 
 def remember_gains(items):
     """items = [(dest, src, valor)] con valor > 0; se guarda en state.json['routeMemory']."""
-    st = load_json(STATE_PATH, {})  # recarga justo antes de escribir: no perder claves ajenas
-    mem = st.get("routeMemory") if isinstance(st.get("routeMemory"), dict) else {}
-    for dest, src, val in items:
-        row = mem.get(dest) if isinstance(mem.get(dest), dict) else {}
-        row[src] = val
-        mem[dest] = row
-    st["routeMemory"] = mem
-    atomic_write(STATE_PATH, json.dumps(st, indent=2, ensure_ascii=False) + "\n")
+    with mgame_lock.exclusive(STATE_PATH):
+        st = load_json(STATE_PATH, {})  # recarga justo antes de escribir: no perder claves ajenas
+        mem = st.get("routeMemory") if isinstance(st.get("routeMemory"), dict) else {}
+        for dest, src, val in items:
+            row = mem.get(dest) if isinstance(mem.get(dest), dict) else {}
+            row[src] = val
+            mem[dest] = row
+        st["routeMemory"] = mem
+        atomic_write(STATE_PATH, json.dumps(st, indent=2, ensure_ascii=False) + "\n")
 
 
 def dev_state(refresh):
@@ -1128,8 +1220,29 @@ def dev_dispatch(cmd, args):
         port = dev_port()
         frames = [md.checked_set(param, vals, leds) for _, param, vals in items]
         amidi_send_batch(port, frames)
+        note_led_preset(args[0])
         return {"ok": True, "preset": args[0], "count": len(items), "skipped": skipped}
+    if cmd in ("dev-fx", "dev-fx-presets", "dev-fx-preset"):
+        return dev_fx(cmd, args)
     raise md.DevError("comando desconocido")
+
+
+def dev_fx(cmd, args):
+    """Lectura de FX. No abre el puerto y no arma tramas."""
+    import mgame_device as md
+    import mgame_fx
+
+    if cmd == "dev-fx":
+        if args:
+            raise md.DevError("uso: dev-fx")
+        return mgame_fx.fx_state(md.load_device_json())
+    if cmd == "dev-fx-presets":
+        if args:
+            raise md.DevError("uso: dev-fx-presets")
+        return mgame_fx.fx_presets()
+    if len(args) != 2:
+        raise md.DevError("uso: dev-fx-preset voice|mic NAME")
+    return mgame_fx.fx_preset(args[0], args[1])
 
 
 # ------------------------------- CLI ---------------------------------------
@@ -1148,6 +1261,68 @@ def num_arg(value, lo, hi):
     return max(lo, min(hi, n))
 
 
+APPS_PROFILE_CMDS = (
+    "apps-rules", "apps-rule-set", "apps-rule-del", "apps-apply",
+    "apps-watch", "apps-watch-enable", "apps-watch-disable",
+    "profile-list", "profile-save", "profile-load", "profile-delete",
+)
+
+
+def json_exit(fn, args):
+    try:
+        res = fn(args)
+    except mgame_lock.LockBusy:
+        res = {"ok": False, "error": "busy"}
+    except SystemExit as exc:
+        if not isinstance(exc.code, str):
+            raise
+        res = {"ok": False, "error": exc.code}
+    except Exception as exc:  # nunca un traceback hacia el panel
+        res = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:200]}
+    if not isinstance(res, dict):
+        res = {"ok": False, "error": "respuesta inválida"}
+    print(json.dumps(res))
+    return 0 if res.get("ok") else 1
+
+
+def apps_rules(args):
+    import mgame_apps
+    res = mgame_apps.cmd_rules(args)
+    if isinstance(res, dict) and res.get("ok"):
+        res["watch"] = apps_watch_state()
+    return res
+
+
+def apps_profiles_main(cmd, args):
+    # apps-watch no debe importar el módulo de perfiles (ese sí carga el dispositivo).
+    if cmd == "apps-watch":
+        import mgame_apps
+        if args:
+            print(json.dumps({"ok": False, "error": "uso: apps-watch"}))
+            return 1
+        mgame_apps.watch()
+        return 1
+    import mgame_apps
+    import mgame_profiles
+    table = {
+        "apps-rules": apps_rules,
+        "apps-rule-set": mgame_apps.cmd_rule_set,
+        "apps-rule-del": mgame_apps.cmd_rule_del,
+        "apps-apply": mgame_apps.cmd_apply,
+        "apps-watch-enable": apps_watch_enable,
+        "apps-watch-disable": apps_watch_disable,
+        "profile-list": mgame_profiles.cmd_list,
+        "profile-save": mgame_profiles.cmd_save,
+        "profile-load": mgame_profiles.cmd_load,
+        "profile-delete": mgame_profiles.cmd_delete,
+    }
+    fn = table.get(cmd)
+    if fn is None:
+        print(json.dumps({"ok": False, "error": "comando desconocido"}))
+        return 1
+    return json_exit(fn, args)
+
+
 def main(argv):
     if len(argv) < 2:
         raise SystemExit(__doc__)
@@ -1157,6 +1332,8 @@ def main(argv):
             print(json.dumps({"ok": False, "error": "comando desconocido"}))
             raise SystemExit(1)
         raise SystemExit(dev_main(cmd, args))
+    if cmd in APPS_PROFILE_CMDS:
+        raise SystemExit(apps_profiles_main(cmd, args))
 
     def need(n):
         if len(args) < n:

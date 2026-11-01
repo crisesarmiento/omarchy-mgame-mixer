@@ -1,0 +1,58 @@
+{
+  "name": "Arctis_Steel_3",
+  "source": "06-Arctis_Steel_3.MGameRGBDualMicEffects",
+  "hostSide": true,
+  "phantom": 0,
+  "records": [
+    {
+      "id": 290,
+      "class": "MA::MicHighPassFilters",
+      "values": [
+        160513,
+        1771776,
+        0
+      ]
+    },
+    {
+      "id": 291,
+      "class": "MA::MicNoiseGate",
+      "values": [
+        1631977549
+      ]
+    },
+    {
+      "id": 294,
+      "class": "MA::Mic5BandPEQ",
+      "values": [
+        84505345,
+        656645,
+        1900607,
+        3211578,
+        4784442,
+        6357290,
+        6684992
+      ]
+    },
+    {
+      "id": 295,
+      "class": "MA::MicDeEsser",
+      "values": [
+        94977,
+        5572420,
+        160513,
+        5113664,
+        1459619585,
+        1551,
+        95092
+      ]
+    },
+    {
+      "id": 296,
+      "class": "MA::MicCompressor",
+      "values": [
+        1462449921,
+        1026
+      ]
+    }
+  ]
+}

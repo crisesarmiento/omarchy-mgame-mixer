@@ -1,0 +1,58 @@
+{
+  "name": "M-Audio_Nova",
+  "source": "05-M-Audio_Nova.MGameRGBDualMicEffects",
+  "hostSide": true,
+  "phantom": 1,
+  "records": [
+    {
+      "id": 290,
+      "class": "MA::MicHighPassFilters",
+      "values": [
+        160513,
+        1575168,
+        0
+      ]
+    },
+    {
+      "id": 291,
+      "class": "MA::MicNoiseGate",
+      "values": [
+        1464205389
+      ]
+    },
+    {
+      "id": 294,
+      "class": "MA::Mic5BandPEQ",
+      "values": [
+        84505345,
+        656645,
+        1900616,
+        3211578,
+        4784444,
+        6357308,
+        6685014
+      ]
+    },
+    {
+      "id": 295,
+      "class": "MA::MicDeEsser",
+      "values": [
+        94977,
+        5572420,
+        160513,
+        5113664,
+        1459619585,
+        1551,
+        95092
+      ]
+    },
+    {
+      "id": 296,
+      "class": "MA::MicCompressor",
+      "values": [
+        1462449921,
+        1026
+      ]
+    }
+  ]
+}

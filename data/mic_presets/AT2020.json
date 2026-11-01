@@ -1,0 +1,58 @@
+{
+  "name": "AT2020",
+  "source": "04-AT2020.MGameRGBDualMicEffects",
+  "hostSide": true,
+  "phantom": 1,
+  "records": [
+    {
+      "id": 290,
+      "class": "MA::MicHighPassFilters",
+      "values": [
+        161025,
+        1575168,
+        0
+      ]
+    },
+    {
+      "id": 291,
+      "class": "MA::MicNoiseGate",
+      "values": [
+        1464205389
+      ]
+    },
+    {
+      "id": 294,
+      "class": "MA::Mic5BandPEQ",
+      "values": [
+        84505345,
+        656645,
+        1900602,
+        3211576,
+        4784439,
+        6357305,
+        6685006
+      ]
+    },
+    {
+      "id": 295,
+      "class": "MA::MicDeEsser",
+      "values": [
+        94977,
+        5572420,
+        160513,
+        5113664,
+        1460406017,
+        1551,
+        95092
+      ]
+    },
+    {
+      "id": 296,
+      "class": "MA::MicCompressor",
+      "values": [
+        1462449921,
+        1026
+      ]
+    }
+  ]
+}

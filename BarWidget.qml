@@ -279,13 +279,18 @@ BarWidget {
     }
   }
 
-  // Cola serializada de escrituras `dev-*`: un solo proceso a la vez, en orden.
+  // Cola serializada de escrituras: un solo proceso a la vez, en orden.
+  // Las mutaciones nuevas (apps, perfiles) van en la misma cola que `dev-*`,
+  // con tag distinto, para que un profile-load no pise un dev-gain. Un error
+  // de apps o perfiles no marca el equipo como caído.
   property var devQueue: []
   property bool devWriting: false
   property bool devWriteOutDone: false
   property bool devWriteExitDone: false
   property string devWriteText: ""
   property int devWriteCode: 0
+  property string devWriteTag: "dev"
+  property var devWriteArgs: []
 
   function holdDev(ms) {
     root.devHoldUntil = Math.max(root.devHoldUntil, Date.now() + ms)
@@ -295,20 +300,21 @@ BarWidget {
     return args[0] === "dev-gain" ? "gain:" + args[1] + ":" + args[2] : ""
   }
 
-  function devRun(args) {
+  function devRun(args, tag) {
     holdDev(700)
     var q = root.devQueue
     var key = devQueueKey(args)
+    var itemTag = tag || "dev"
     if (key !== "") {
       for (var i = 0; i < q.length; i++) {
-        if (q[i].key === key) { q[i].args = args; pumpDev(); return }
+        if (q[i].key === key) { q[i].args = args; q[i].tag = itemTag; pumpDev(); return }
       }
     } else if (q.length > 0 && q[q.length - 1].key === ""
                && JSON.stringify(q[q.length - 1].args) === JSON.stringify(args)) {
       pumpDev()
       return
     }
-    q.push({ key: key, args: args })
+    q.push({ key: key, args: args, tag: itemTag })
     pumpDev()
   }
 
@@ -327,6 +333,8 @@ BarWidget {
     root.devWriteExitDone = false
     root.devWriteText = ""
     root.devWriteCode = 0
+    root.devWriteTag = next.tag || "dev"
+    root.devWriteArgs = next.args || []
     root.devHoldUntil = Date.now() + 600000
     devWriteProc.command = ["python3", root.helperPath].concat(next.args)
     devWriteProc.running = true
@@ -338,16 +346,25 @@ BarWidget {
     var raw = String(root.devWriteText || "").trim()
     var parsed = null
     try { parsed = JSON.parse(raw) } catch (e) {}
-    if (!parsed || typeof parsed !== "object") {
-      err = root.devWriteCode !== 0 ? "dev write failed (exit " + root.devWriteCode + ")" : "dev write: unparsable output"
-    } else if (parsed.ok === false) {
-      err = String(parsed.error || "dev write failed")
-    } else if (root.devWriteCode !== 0) {
-      err = "dev write failed (exit " + root.devWriteCode + ")"
-    }
-    if (err !== "") {
-      root.devOk = false
-      root.devError = err
+    var tag = root.devWriteTag || "dev"
+    if (tag === "dev") {
+      if (!parsed || typeof parsed !== "object") {
+        err = root.devWriteCode !== 0 ? "dev write failed (exit " + root.devWriteCode + ")" : "dev write: unparsable output"
+      } else if (parsed.ok === false) {
+        err = String(parsed.error || "dev write failed")
+      } else if (root.devWriteCode !== 0) {
+        err = "dev write failed (exit " + root.devWriteCode + ")"
+      }
+      if (err !== "") {
+        root.devOk = false
+        root.devError = err
+      }
+    } else {
+      var fallback = tag === "apps" ? strings.t("apps.unavailable") : strings.t("profiles.unavailable")
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) err = fallback
+      else if (parsed.ok === false) err = String(parsed.error || fallback)
+      else if (parsed.ok !== true || root.devWriteCode !== 0) err = fallback
+      root.finishExtra(tag, parsed, err, root.devWriteArgs)
     }
     root.devWriting = false
     if (root.devQueue.length > 0) {
@@ -432,6 +449,446 @@ BarWidget {
     devSettleTimer.restart()
   }
 
+  // ---- FX (solo lectura), apps y perfiles ----
+  // Lecturas: dev-fx-presets, dev-fx, dev-fx-preset, apps-rules, profile-list.
+  // Van con el poll de dev-state. No hay botón que mande un get.
+  // Mutaciones, misma cola que dev-*:
+  //   apps-rule-set MATCH FIELD SINK
+  //   apps-rule-del MATCH FIELD
+  //   apps-watch-enable | apps-watch-disable
+  //   apps-apply
+  //   profile-save | profile-delete | profile-load NAME
+  // MATCH y NAME van como un solo argv (pueden tener espacios).
+  // El panel no llama a apps-watch.
+  property var fxPresets: ({ voice: [], mic: [] })
+  property bool fxPresetsSeen: false
+  property string fxError: ""
+  property bool fxDown: false
+  property var fxNow: []
+  property bool fxNowSeen: false
+  property string fxNowError: ""
+  property bool fxNowDown: false
+  property var fxDetail: null
+  property string fxDetailError: ""
+  property bool fxDetailDown: false
+  property string fxDetailKind: ""
+  property string fxDetailName: ""
+  property bool fxDetailLoading: false
+  property string fxDetailWantedKind: ""
+  property string fxDetailWantedName: ""
+  property string fxDetailFlightKind: ""
+  property string fxDetailFlightName: ""
+  property bool fxDetailGotStdout: false
+
+  property var appRules: []
+  property bool appRulesSeen: false
+  property string appsError: ""
+  property bool appsDown: false
+  property bool appsWatch: false
+  property bool appsWatchActive: false
+  property double appsWatchHoldUntil: 0
+  property bool appsWatchWanted: false
+  property bool appsApplying: false
+  property int appsMoved: -1
+  property int appsSkipped: -1
+  property int appsFailed: -1
+  property bool appsApplyBare: false
+  property string appsApplyError: ""
+
+  property var profileNames: []
+  property bool profilesSeen: false
+  property string profilesError: ""
+  property bool profilesDown: false
+  property var profileResult: null
+  property string profileResultError: ""
+  property string profileAction: ""
+  property string profileResultName: ""
+  property bool profileBusy: false
+  property string profileBusyAction: ""
+
+  signal appsAdded()
+
+  function parseRead(text) {
+    var raw = String(text || "").trim()
+    var parsed = null
+    try { parsed = JSON.parse(raw) } catch (e) {}
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+    return parsed
+  }
+
+  function nameList(value) {
+    if (!Array.isArray(value)) return []
+    var out = []
+    for (var i = 0; i < value.length; i++) {
+      if (typeof value[i] === "string" && value[i] !== "") out.push(value[i])
+      else if (value[i] && value[i].name) out.push(String(value[i].name))
+    }
+    return out
+  }
+
+  function refreshFx() {
+    if (!fxPresetsProc.running) {
+      fxPresetsProc.command = ["python3", root.helperPath, "dev-fx-presets"]
+      fxPresetsProc.running = true
+    }
+    if (!fxNowProc.running) {
+      fxNowProc.command = ["python3", root.helperPath, "dev-fx"]
+      fxNowProc.running = true
+    }
+  }
+
+  function markReadError(parsed, errorKey, setDown, setError) {
+    if (parsed && parsed.ok === false) {
+      setDown(false)
+      setError(String(parsed.error || strings.t(errorKey)))
+      return
+    }
+    setDown(true)
+    setError("")
+  }
+
+  function ingestFxPresets(text) {
+    var parsed = root.parseRead(text)
+    if (!parsed || parsed.ok !== true) {
+      root.markReadError(parsed, "fx.unavailable", function(v) { root.fxDown = v }, function(v) { root.fxError = v })
+      return
+    }
+    root.fxPresets = { voice: root.nameList(parsed.voice), mic: root.nameList(parsed.mic) }
+    root.fxPresetsSeen = true
+    root.fxError = ""
+    root.fxDown = false
+  }
+
+  function fxScalar(value) {
+    if (value === null || value === undefined) return ""
+    if (typeof value !== "object") return String(value)
+    try { return JSON.stringify(value) } catch (e) { return "" }
+  }
+
+  function pushFxRow(out, label, value, labeled) {
+    var shown = root.fxScalar(value)
+    if (shown.length > 160) shown = shown.slice(0, 157) + "…"
+    if (shown === "" && !label) return
+    out.push({ label: label || "", value: shown, labeled: !!labeled })
+  }
+
+  function walkFx(node, out, inherited) {
+    if (node === null || node === undefined) return
+    if (typeof node !== "object") {
+      root.pushFxRow(out, inherited || "", node, false)
+      return
+    }
+    if (Array.isArray(node)) {
+      for (var i = 0; i < node.length; i++) root.walkFx(node[i], out, inherited)
+      return
+    }
+    var label = node.label ? String(node.label) : (node.name ? String(node.name) : "")
+    var id = node.id ? String(node.id) : (node.param ? String(node.param) : "")
+    var shown = label || inherited || id
+    var nested = node.params || node.knobs || node.blocks || node.controls || node.items
+    if (nested) {
+      root.walkFx(nested, out, shown || inherited)
+      return
+    }
+    if ("value" in node || "values" in node || "raw" in node) {
+      var val = ("value" in node) ? node.value : (("values" in node) ? node.values : node.raw)
+      root.pushFxRow(out, shown, val, label !== "")
+      return
+    }
+    var keys = Object.keys(node)
+    for (var k = 0; k < keys.length; k++) {
+      var key = keys[k]
+      if (key === "ok" || key === "error" || key === "label" || key === "name" || key === "id" || key === "param") continue
+      var child = node[key]
+      if (child && typeof child === "object") root.walkFx(child, out, shown || key)
+      else root.pushFxRow(out, shown || key, child, label !== "")
+    }
+  }
+
+  function ingestFxNow(text) {
+    var parsed = root.parseRead(text)
+    if (!parsed || parsed.ok !== true) {
+      root.markReadError(parsed, "fx.unavailable", function(v) { root.fxNowDown = v }, function(v) { root.fxNowError = v })
+      return
+    }
+    var out = []
+    if (parsed.blocks || parsed.knob || parsed.knobs || parsed.family0105) {
+      if (parsed.knob) root.walkFx(parsed.knob, out, "")
+      if (parsed.knobs) root.walkFx(parsed.knobs, out, "")
+      if (parsed.family0105) root.walkFx(parsed.family0105, out, "")
+      if (parsed.blocks) root.walkFx(parsed.blocks, out, "")
+    } else {
+      var src = parsed.fx || parsed.effects || parsed
+      root.walkFx(src, out, "")
+    }
+    root.fxNow = out
+    root.fxNowSeen = true
+    root.fxNowError = ""
+    root.fxNowDown = false
+  }
+
+  function loadFxPreset(kind, name) {
+    if (kind !== "voice" && kind !== "mic") return
+    root.fxDetailKind = kind
+    root.fxDetailName = String(name || "")
+    root.fxDetail = null
+    root.fxDetailError = ""
+    root.fxDetailDown = false
+    root.fxDetailLoading = true
+    root.fxDetailWantedKind = kind
+    root.fxDetailWantedName = String(name || "")
+    if (fxDetailProc.running) return
+    root.startFxDetail()
+  }
+
+  function startFxDetail() {
+    if (fxDetailProc.running || root.fxDetailWantedKind === "") return
+    var kind = root.fxDetailWantedKind
+    var name = root.fxDetailWantedName
+    root.fxDetailWantedKind = ""
+    root.fxDetailWantedName = ""
+    root.fxDetailFlightKind = kind
+    root.fxDetailFlightName = name
+    root.fxDetailGotStdout = false
+    fxDetailProc.command = ["python3", root.helperPath, "dev-fx-preset", kind, name]
+    fxDetailProc.running = true
+  }
+
+  function ingestFxDetail(text) {
+    root.fxDetailGotStdout = true
+    var kind = root.fxDetailFlightKind
+    var name = root.fxDetailFlightName
+    if (root.fxDetailKind !== kind || root.fxDetailName !== name) return
+    if (root.fxDetailWantedKind !== "") return
+    var parsed = root.parseRead(text)
+    root.fxDetailLoading = false
+    if (!parsed || parsed.ok !== true) {
+      root.fxDetail = null
+      root.markReadError(parsed, "fx.unavailable", function(v) { root.fxDetailDown = v }, function(v) { root.fxDetailError = v })
+      return
+    }
+    root.fxDetail = parsed.preset && typeof parsed.preset === "object" ? parsed.preset : parsed
+    root.fxDetailError = ""
+    root.fxDetailDown = false
+  }
+
+  function refreshApps() {
+    if (appsProc.running) return
+    appsProc.command = ["python3", root.helperPath, "apps-rules"]
+    appsProc.running = true
+  }
+
+  function asRules(value) {
+    if (!Array.isArray(value)) return []
+    var out = []
+    for (var i = 0; i < value.length; i++) {
+      var row = value[i]
+      var match = ""
+      var field = ""
+      var sink = ""
+      if (Array.isArray(row)) {
+        match = String(row[0] || "")
+        field = String(row[1] || "")
+        sink = String(row[2] || "")
+      } else if (row && typeof row === "object") {
+        match = String(row.match || row.text || row.pattern || "")
+        field = String(row.field || row.on || "")
+        sink = String(row.sink || row.output || row.dest || "")
+      }
+      out.push({ match: match, field: field, sink: sink })
+    }
+    return out
+  }
+
+  function watchFrom(parsed) {
+    if (!parsed || typeof parsed !== "object") return null
+    var w = parsed.watch || parsed.watcher || null
+    if (w && typeof w === "object" && (("enabled" in w) || ("active" in w))) {
+      return { enabled: w.enabled === true, active: w.active === true }
+    }
+    if (("enabled" in parsed) || ("watching" in parsed)) {
+      return { enabled: parsed.enabled === true || parsed.watching === true, active: parsed.active === true }
+    }
+    return null
+  }
+
+  function ingestApps(text) {
+    var parsed = root.parseRead(text)
+    if (!parsed || parsed.ok !== true) {
+      root.markReadError(parsed, "apps.unavailable", function(v) { root.appsDown = v }, function(v) { root.appsError = v })
+      return
+    }
+    root.appRules = root.asRules(parsed.rules)
+    root.appRulesSeen = true
+    root.appsError = ""
+    root.appsDown = false
+    if (Date.now() >= root.appsWatchHoldUntil) {
+      var w = root.watchFrom(parsed)
+      if (w) {
+        root.appsWatch = w.enabled
+        root.appsWatchActive = w.active
+      }
+    }
+  }
+
+  function addAppRule(match, field, sink) {
+    var text = String(match || "").replace(/^\s+|\s+$/g, "")
+    if (text === "" || text.length > 80) return
+    if (["binary", "name", "both"].indexOf(field) < 0) return
+    if (["game", "chat", "sampler", "system"].indexOf(sink) < 0) return
+    root.devRun(["apps-rule-set", text, field, sink], "apps")
+  }
+
+  function removeAppRule(match, field) {
+    var text = String(match || "")
+    if (text === "" || ["binary", "name", "both"].indexOf(field) < 0) return
+    root.devRun(["apps-rule-del", text, String(field)], "apps")
+  }
+
+  function setAppsWatch(on) {
+    root.appsWatch = !!on
+    root.appsWatchWanted = !!on
+    root.appsWatchHoldUntil = Date.now() + 2000
+    root.devRun([on ? "apps-watch-enable" : "apps-watch-disable"], "apps")
+  }
+
+  function applyApps() {
+    if (root.appsApplying) return
+    root.appsApplying = true
+    root.appsMoved = -1
+    root.appsSkipped = -1
+    root.appsFailed = -1
+    root.appsApplyBare = false
+    root.appsApplyError = ""
+    root.devRun(["apps-apply"], "apps")
+  }
+
+  function countOf(value) {
+    if (typeof value === "number" && isFinite(value)) return value
+    if (Array.isArray(value)) return value.length
+    return -1
+  }
+
+  function refreshProfiles() {
+    if (profilesProc.running) return
+    profilesProc.command = ["python3", root.helperPath, "profile-list"]
+    profilesProc.running = true
+  }
+
+  function profileNameOk(name) {
+    return /^[A-Za-z0-9][A-Za-z0-9 _-]{0,40}$/.test(String(name || ""))
+  }
+
+  function asProfileNames(value) {
+    var list = root.nameList(value)
+    var out = []
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].charAt(0) === "_") continue
+      out.push(list[i])
+    }
+    return out
+  }
+
+  function ingestProfiles(text) {
+    var parsed = root.parseRead(text)
+    if (!parsed || parsed.ok !== true) {
+      root.markReadError(parsed, "profiles.unavailable", function(v) { root.profilesDown = v }, function(v) { root.profilesError = v })
+      return
+    }
+    var list = parsed.profiles || parsed.names || []
+    root.profileNames = root.asProfileNames(list)
+    root.profilesSeen = true
+    root.profilesError = ""
+    root.profilesDown = false
+  }
+
+  function beginProfile(action, name) {
+    root.profileBusy = true
+    root.profileBusyAction = action
+    root.profileAction = action
+    root.profileResultName = name
+    root.profileResult = null
+    root.profileResultError = ""
+  }
+
+  function saveProfile(name) {
+    if (!root.profileNameOk(name)) return
+    root.beginProfile("profile-save", name)
+    root.devRun(["profile-save", name], "profiles")
+  }
+
+  function deleteProfile(name) {
+    if (!name || String(name).charAt(0) === "_") return
+    root.beginProfile("profile-delete", name)
+    root.devRun(["profile-delete", name], "profiles")
+  }
+
+  function loadProfile(name) {
+    if (!name || String(name).charAt(0) === "_") return
+    root.beginProfile("profile-load", name)
+    root.devRun(["profile-load", name], "profiles")
+  }
+
+  function finishExtra(tag, parsed, err, args) {
+    try {
+      if (tag === "apps") root.finishApps(parsed, err, args)
+      else if (tag === "profiles") root.finishProfiles(parsed, err, args)
+    } catch (e) {
+      if (tag === "apps") root.appsError = String(e)
+      else root.profilesError = String(e)
+    }
+  }
+
+  function finishApps(parsed, err, args) {
+    var cmd = args && args.length ? String(args[0]) : ""
+    if (cmd === "apps-watch-enable" || cmd === "apps-watch-disable") {
+      if (err !== "") {
+        root.appsWatch = !root.appsWatchWanted
+        root.appsWatchHoldUntil = 0
+        root.appsError = err
+        return
+      }
+      var w = root.watchFrom(parsed)
+      if (w) {
+        root.appsWatch = w.enabled
+        root.appsWatchActive = w.active
+      }
+      root.appsError = ""
+      root.refreshApps()
+      return
+    }
+    if (cmd === "apps-apply") {
+      root.appsApplying = false
+      root.appsApplyError = err
+      root.appsMoved = parsed ? root.countOf(parsed.moved) : -1
+      root.appsSkipped = parsed ? root.countOf(parsed.skipped) : -1
+      root.appsFailed = parsed ? root.countOf(parsed.failed) : -1
+      root.appsApplyBare = root.appsMoved < 0 && root.appsSkipped < 0 && root.appsFailed < 0 && err === ""
+      root.refresh()
+      return
+    }
+    if (err !== "") {
+      root.appsError = err
+      return
+    }
+    root.appsError = ""
+    if (cmd === "apps-rule-set") root.appsAdded()
+    root.refreshApps()
+  }
+
+  function finishProfiles(parsed, err, args) {
+    var cmd = args && args.length ? String(args[0]) : ""
+    root.profileAction = cmd || root.profileAction
+    root.profileResult = parsed
+    root.profileResultError = err
+    root.profileBusy = false
+    if (cmd === "profile-load") {
+      root.refresh()
+      root.refreshApps()
+    }
+    root.refreshProfiles()
+  }
+
   function openSampleDir() {
     Quickshell.execDetached(["python3", root.helperPath, "ensure-dirs"])
     openDirTimer.restart()
@@ -468,7 +925,12 @@ BarWidget {
     running: true
     onTriggered: {
       root.refresh()
-      if (root.opened) root.refreshDev()
+      if (root.opened) {
+        root.refreshDev()
+        root.refreshFx()
+        root.refreshApps()
+        root.refreshProfiles()
+      }
     }
   }
 
@@ -527,6 +989,35 @@ BarWidget {
         } catch (e) {}
       }
     }
+  }
+
+  Process {
+    id: fxPresetsProc
+    stdout: StdioCollector { onStreamFinished: root.ingestFxPresets(text) }
+  }
+
+  Process {
+    id: fxNowProc
+    stdout: StdioCollector { onStreamFinished: root.ingestFxNow(text) }
+  }
+
+  Process {
+    id: fxDetailProc
+    stdout: StdioCollector { onStreamFinished: root.ingestFxDetail(text) }
+    onExited: function(code, status) {
+      if (!root.fxDetailGotStdout) root.ingestFxDetail("")
+      if (root.fxDetailWantedKind !== "") root.startFxDetail()
+    }
+  }
+
+  Process {
+    id: appsProc
+    stdout: StdioCollector { onStreamFinished: root.ingestApps(text) }
+  }
+
+  Process {
+    id: profilesProc
+    stdout: StdioCollector { onStreamFinished: root.ingestProfiles(text) }
   }
 
   Timer {
@@ -601,7 +1092,7 @@ BarWidget {
     function close(): void { root.close() }
     function toggle(): void { root.toggle() }
     function tab(name: string): void {
-      if (panelLoader.item && ["mixer", "mic", "sampler", "routing", "lights", "device"].indexOf(name) >= 0) panelLoader.item.tab = name
+      if (panelLoader.item && ["mixer", "mic", "sampler", "routing", "lights", "device", "fx", "apps", "profiles"].indexOf(name) >= 0) panelLoader.item.tab = name
     }
   }
 
