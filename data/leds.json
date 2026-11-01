@@ -1,0 +1,437 @@
+{
+  "controls": {
+    "sample_1": {
+      "param": "01030A00",
+      "n": 3,
+      "label": "Bank 1 Sample 1",
+      "kind": "button"
+    },
+    "sample_2": {
+      "param": "01030B00",
+      "n": 3,
+      "label": "Bank 1 Sample 2",
+      "kind": "button"
+    },
+    "sample_3": {
+      "param": "01030C00",
+      "n": 3,
+      "label": "Bank 1 Sample 3",
+      "kind": "button"
+    },
+    "sample_4": {
+      "param": "01030D00",
+      "n": 3,
+      "label": "Bank 1 Sample 4",
+      "kind": "button"
+    },
+    "sample_5": {
+      "param": "01030E00",
+      "n": 3,
+      "label": "Bank 1 Sample 5",
+      "kind": "button"
+    },
+    "sample_6": {
+      "param": "01030F00",
+      "n": 3,
+      "label": "Bank 2 Sample 1",
+      "kind": "button"
+    },
+    "sample_7": {
+      "param": "01031000",
+      "n": 3,
+      "label": "Bank 2 Sample 2",
+      "kind": "button"
+    },
+    "sample_8": {
+      "param": "01031100",
+      "n": 3,
+      "label": "Bank 2 Sample 3",
+      "kind": "button"
+    },
+    "sample_9": {
+      "param": "01031200",
+      "n": 3,
+      "label": "Bank 2 Sample 4",
+      "kind": "button"
+    },
+    "sample_10": {
+      "param": "01031300",
+      "n": 3,
+      "label": "Bank 2 Sample 5",
+      "kind": "button"
+    },
+    "mute_game": {
+      "param": "01030300",
+      "n": 3,
+      "label": "Game Mute",
+      "kind": "button"
+    },
+    "mute_chat": {
+      "param": "01030400",
+      "n": 3,
+      "label": "Chat Mute",
+      "kind": "button"
+    },
+    "mute_sampler": {
+      "param": "01030500",
+      "n": 3,
+      "label": "Sampler Mute",
+      "kind": "button"
+    },
+    "mute_main_alt": {
+      "param": "01030600",
+      "n": 3,
+      "label": "Main/Alt Mute",
+      "kind": "button"
+    },
+    "voice_fx_1": {
+      "param": "01030700",
+      "n": 3,
+      "label": "Voice FX 1",
+      "kind": "button"
+    },
+    "voice_fx_2": {
+      "param": "01030900",
+      "n": 3,
+      "label": "Voice FX 2",
+      "kind": "button"
+    },
+    "voice_fx_3": {
+      "param": "01031400",
+      "n": 3,
+      "label": "Voice FX 3",
+      "kind": "button"
+    },
+    "voice_fx_4": {
+      "param": "01031500",
+      "n": 3,
+      "label": "Voice FX 4",
+      "kind": "button"
+    },
+    "mic_mute": {
+      "param": "01030100",
+      "n": 3,
+      "label": "Mic Mute (mute-all)",
+      "kind": "button"
+    },
+    "swear": {
+      "param": "01030200",
+      "n": 3,
+      "label": "Censor ($%^#*)",
+      "kind": "button"
+    },
+    "led_label_0": {
+      "param": "01030000",
+      "n": 3,
+      "label": "LED label 0",
+      "kind": "button"
+    },
+    "led_label_1": {
+      "param": "01030800",
+      "n": 3,
+      "label": "LED label 1",
+      "kind": "button"
+    },
+    "led_label_2": {
+      "param": "01031600",
+      "n": 3,
+      "label": "LED label 2",
+      "kind": "button"
+    },
+    "led_label_3": {
+      "param": "01031700",
+      "n": 3,
+      "label": "LED label 3",
+      "kind": "button"
+    },
+    "led_label_4": {
+      "param": "01031800",
+      "n": 3,
+      "label": "LED label 4",
+      "kind": "button"
+    },
+    "led_label_5": {
+      "param": "01031900",
+      "n": 3,
+      "label": "LED label 5",
+      "kind": "button"
+    },
+    "led_label_6": {
+      "param": "01031A00",
+      "n": 3,
+      "label": "LED label 6",
+      "kind": "button"
+    },
+    "led_label_7": {
+      "param": "01031B00",
+      "n": 3,
+      "label": "LED label 7",
+      "kind": "button"
+    },
+    "led_label_8": {
+      "param": "01031C00",
+      "n": 3,
+      "label": "LED label 8",
+      "kind": "button"
+    },
+    "led_label_9": {
+      "param": "01031D00",
+      "n": 3,
+      "label": "LED label 9",
+      "kind": "button"
+    },
+    "led_label_10": {
+      "param": "01031E00",
+      "n": 3,
+      "label": "LED label 10",
+      "kind": "button"
+    },
+    "led_label_11": {
+      "param": "01031F00",
+      "n": 3,
+      "label": "LED label 11",
+      "kind": "button"
+    },
+    "led_label_12": {
+      "param": "01032000",
+      "n": 3,
+      "label": "LED label 12",
+      "kind": "button"
+    },
+    "led_array_0": {
+      "param": "01010000",
+      "n": 4,
+      "label": "LED array 0",
+      "kind": "array"
+    },
+    "led_array_1": {
+      "param": "01010100",
+      "n": 4,
+      "label": "LED array 1",
+      "kind": "array"
+    },
+    "led_array_2": {
+      "param": "01010200",
+      "n": 4,
+      "label": "LED array 2",
+      "kind": "array"
+    },
+    "led_array_3": {
+      "param": "01010300",
+      "n": 4,
+      "label": "LED array 3",
+      "kind": "array"
+    },
+    "led_array_4": {
+      "param": "01010400",
+      "n": 4,
+      "label": "LED array 4",
+      "kind": "array"
+    },
+    "led_array_5": {
+      "param": "01010500",
+      "n": 4,
+      "label": "LED array 5",
+      "kind": "array"
+    },
+    "led_array_6": {
+      "param": "01010600",
+      "n": 4,
+      "label": "LED array 6",
+      "kind": "array"
+    },
+    "led_array_7": {
+      "param": "01010700",
+      "n": 4,
+      "label": "LED array 7",
+      "kind": "array"
+    },
+    "led_array_8": {
+      "param": "01010800",
+      "n": 4,
+      "label": "LED array 8",
+      "kind": "array"
+    }
+  },
+  "aliases": {
+    "pad_1": "sample_3",
+    "pad_2": "sample_4",
+    "pad_3": "sample_5",
+    "pad_4": "sample_6",
+    "pad_5": "sample_7",
+    "pad_6": "sample_8",
+    "pad_7": "sample_9",
+    "pad_8": "sample_10"
+  },
+  "palette": {
+    "0": "#000000",
+    "1": "#000000",
+    "2": "#550000",
+    "3": "#551500",
+    "4": "#552A00",
+    "5": "#554000",
+    "6": "#555500",
+    "7": "#405500",
+    "8": "#2A5500",
+    "9": "#155500",
+    "10": "#005500",
+    "11": "#005515",
+    "12": "#00552A",
+    "13": "#005540",
+    "14": "#005555",
+    "15": "#004055",
+    "16": "#002A55",
+    "17": "#001555",
+    "18": "#000055",
+    "19": "#150055",
+    "20": "#2A0055",
+    "21": "#400055",
+    "22": "#550055",
+    "23": "#550040",
+    "24": "#55002A",
+    "25": "#550015",
+    "26": "#2A2A2A",
+    "27": "#AA0000",
+    "28": "#AA2A00",
+    "29": "#AA5500",
+    "30": "#AA8000",
+    "31": "#AAAA00",
+    "32": "#80AA00",
+    "33": "#55AA00",
+    "34": "#2AAA00",
+    "35": "#00AA00",
+    "36": "#00AA2A",
+    "37": "#00AA55",
+    "38": "#00AA80",
+    "39": "#00AAAA",
+    "40": "#0080AA",
+    "41": "#0055AA",
+    "42": "#002AAA",
+    "43": "#0000AA",
+    "44": "#2A00AA",
+    "45": "#5500AA",
+    "46": "#8000AA",
+    "47": "#AA00AA",
+    "48": "#AA0080",
+    "49": "#AA0055",
+    "50": "#AA002A",
+    "51": "#555555",
+    "52": "#FF0000",
+    "53": "#FF4000",
+    "54": "#FF8000",
+    "55": "#FFC000",
+    "56": "#FFFF00",
+    "57": "#C0FF00",
+    "58": "#80FF00",
+    "59": "#40FF00",
+    "60": "#00FF00",
+    "61": "#00FF40",
+    "62": "#00FF80",
+    "63": "#00FFC0",
+    "64": "#00FFFF",
+    "65": "#00C0FF",
+    "66": "#0080FF",
+    "67": "#0040FF",
+    "68": "#0000FF",
+    "69": "#4000FF",
+    "70": "#8000FF",
+    "71": "#C000FF",
+    "72": "#FF00FF",
+    "73": "#FF00C0",
+    "74": "#FF0080",
+    "75": "#FF0040",
+    "76": "#808080",
+    "77": "#FF5555",
+    "78": "#FF8055",
+    "79": "#FFAA55",
+    "80": "#FFD555",
+    "81": "#FFFF55",
+    "82": "#D5FF55",
+    "83": "#AAFF55",
+    "84": "#80FF55",
+    "85": "#55FF55",
+    "86": "#55FF80",
+    "87": "#55FFAA",
+    "88": "#55FFD5",
+    "89": "#55FFFF",
+    "90": "#55D5FF",
+    "91": "#55AAFF",
+    "92": "#5580FF",
+    "93": "#5555FF",
+    "94": "#8055FF",
+    "95": "#AA55FF",
+    "96": "#D555FF",
+    "97": "#FF55FF",
+    "98": "#FF55D5",
+    "99": "#FF55AA",
+    "100": "#FF5580",
+    "101": "#AAAAAA",
+    "102": "#FFAAAA",
+    "103": "#FFC0AA",
+    "104": "#FFD4AA",
+    "105": "#FFEAAA",
+    "106": "#FFFFAA",
+    "107": "#EAFFAA",
+    "108": "#D4FFAA",
+    "109": "#C0FFAA",
+    "110": "#AAFFAA",
+    "111": "#AAFFC0",
+    "112": "#AAFFD4",
+    "113": "#AAFFEA",
+    "114": "#AAFFFF",
+    "115": "#AAEAFF",
+    "116": "#AAD4FF",
+    "117": "#AAC0FF",
+    "118": "#AAAAFF",
+    "119": "#C0AAFF",
+    "120": "#D4AAFF",
+    "121": "#EAAAFF",
+    "122": "#FFAAFF",
+    "123": "#FFAAEA",
+    "124": "#FFAAD4",
+    "125": "#FFAAC0",
+    "126": "#D4D4D4",
+    "127": "#FFFFFF"
+  },
+  "palette_source": "MA::LAppEngine::InitColorArrays (Panel), index = MIDI colour value; 0 and 1 are both black",
+  "modes": {
+    "note": "Button V1 and array word 0 are packed words; the byte layout is inferred from presets, not verified on hardware.",
+    "button_v1": {
+      "0x00000000": {
+        "name": "static",
+        "confidence": "inferred",
+        "desc": "solid: active colour while pressed/lit, idle colour otherwise"
+      },
+      "0x00010000": {
+        "name": "static (variant, byte2=1)",
+        "confidence": "inferred"
+      },
+      "0x00020000": {
+        "name": "rainbow (byte2=2)",
+        "confidence": "inferred"
+      },
+      "0x00020002": {
+        "name": "rainbow, byte0=2",
+        "confidence": "inferred"
+      }
+    },
+    "ui_effect_names": [
+      "SOLID",
+      "PULSE (1-4 colours)",
+      "RAINBOW (bright/dark 1-2/default)",
+      "CHASING",
+      "VU",
+      "VU_WITH_PEAK",
+      "FADER (1-2 colours, indicator, background)",
+      "GRADIENT_FADER",
+      "CHASING_FADER",
+      "PULSE_FADER",
+      "RAINBOW_FADER"
+    ],
+    "ui_effect_names_note": "Strings NID_LED_SETTINGS_* in the Panel; their numeric order in the V1 word is NOT established.",
+    "array_word0": {
+      "note": "Words seen: 0x04|(i<<24) (Default, static), 0x02, 0x00, 0x06|(i<<24), 0x140003 (Rainbow), 0x140001 (Pulse/VU on arrays 7-8), 0x1E0D38|(i<<24) (Pulse and VU, bytes 38 0D 1E = same shape as live device reading 0x051E0D18). byte3 looks like a per-array index; byte0..2 effect/variant. Exact meaning unverified."
+    },
+    "colour_fields": "button V2/V3 are palette indices 0..127 (bit7 unused). Observed V3 = V2 + 0x32 for solid colours: V2 is the dim (0x55-scaled) twin of V3's full-brightness colour. Which of V2/V3 is shown when lit vs idle is unverified; contract names are active=V2, idle=V3."
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "default": {
+    "stream": {
+      "mic": 115,
+      "game": 115,
+      "chat": 115,
+      "aux": 115,
+      "sampler": 115,
+      "system": 115
+    },
+    "chat": {
+      "mic": 115,
+      "game": 0,
+      "chat": 0,
+      "aux": 0,
+      "sampler": 0,
+      "system": 0
+    },
+    "alt": {
+      "mic": 115,
+      "game": 0,
+      "chat": 0,
+      "aux": 0,
+      "sampler": 115,
+      "system": 0
+    },
+    "sampler": {
+      "mic": 115,
+      "game": 115,
+      "chat": 115,
+      "aux": 115,
+      "sampler": 115,
+      "system": 115
+    },
+    "main": {
+      "mic": 0,
+      "game": 115,
+      "chat": 115,
+      "aux": 115,
+      "sampler": 115,
+      "system": 115
+    },
+    "phones": {
+      "mic": 115,
+      "game": 115,
+      "chat": 115,
+      "aux": 115,
+      "sampler": 115,
+      "system": 115
+    }
+  },
+  "no_chat_to_stream": {
+    "stream": {
+      "mic": 115,
+      "game": 115,
+      "chat": 0,
+      "aux": 115,
+      "sampler": 115,
+      "system": 115
+    },
+    "chat": {
+      "mic": 115,
+      "game": 0,
+      "chat": 0,
+      "aux": 0,
+      "sampler": 0,
+      "system": 0
+    },
+    "alt": {
+      "mic": 115,
+      "game": 0,
+      "chat": 0,
+      "aux": 0,
+      "sampler": 115,
+      "system": 0
+    },
+    "sampler": {
+      "mic": 115,
+      "game": 115,
+      "chat": 115,
+      "aux": 115,
+      "sampler": 115,
+      "system": 115
+    },
+    "main": {
+      "mic": 0,
+      "game": 115,
+      "chat": 115,
+      "aux": 115,
+      "sampler": 115,
+      "system": 115
+    },
+    "phones": {
+      "mic": 115,
+      "game": 115,
+      "chat": 115,
+      "aux": 115,
+      "sampler": 115,
+      "system": 115
+    }
+  }
+}

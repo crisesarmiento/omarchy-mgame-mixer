@@ -32,6 +32,46 @@ Panel {
   readonly property var micState: mixer ? mixer.micState : ({ enabled: false, preset: "natural", custom: false, vad: 0, ratio: 1, presence: 0 })
   readonly property var listener: mixer ? mixer.listener : ({ enabled: false, active: false })
 
+  // ---- Equipo (SysEx) ----
+  readonly property var dev: hostWidget ? hostWidget.dev : null
+  readonly property bool devOk: hostWidget ? hostWidget.devOk : false
+  readonly property bool devConnected: devOk && !!dev && dev.connected === true
+  readonly property var dests: ["stream", "chat", "alt", "sampler", "main", "phones"]
+  readonly property var srcs: ["mic", "game", "chat", "aux", "sampler", "system"]
+  readonly property color urgentColor: bar ? bar.urgent : "#e06c75"
+  property string hoverCell: ""
+  property string confirmPreset: ""
+  property string ledEdit: ""
+  property string ledSlot: "active"
+  readonly property var ledControls: hostWidget && hostWidget.ledData ? hostWidget.ledData.controls : null
+  readonly property var ledPalette: hostWidget && hostWidget.ledData && hostWidget.ledData.palette ? hostWidget.ledData.palette : ({})
+  readonly property var paletteKeys: Object.keys(ledPalette).sort(function(a, b) { return Number(a) - Number(b) })
+
+  function gainOf(dest, src) { return hostWidget ? hostWidget.gainOf(dest, src) : -1 }
+  function isMuted(dest, src) {
+    var m = dev && dev.muted ? dev.muted[dest] : null
+    return !!m && m.indexOf(src) >= 0
+  }
+  function ledValue(control, slot) {
+    var l = dev && dev.leds ? dev.leds[control] : null
+    return l && typeof l[slot] === "number" ? l[slot] : -1
+  }
+  function paletteColor(idx) {
+    var c = ledPalette[String(idx)]
+    return c ? String(c) : ""
+  }
+  function pickLed(idx) {
+    if (!root.ledEdit || !hostWidget) return
+    var a = ledValue(root.ledEdit, "active")
+    var i = ledValue(root.ledEdit, "idle")
+    if (root.ledSlot === "active") a = idx; else i = idx
+    hostWidget.setLed(root.ledEdit, a < 0 ? idx : a, i < 0 ? idx : i)
+  }
+  function ledLabel(control) {
+    var c = ledControls ? ledControls[control] : null
+    return c && c.label ? String(c.label) : control
+  }
+
   property string tab: "mixer"
   property int selectedPad: 1
   // Juego de pads que se está viendo/editando: página (1/2) + banco (A/B).
@@ -44,7 +84,11 @@ Panel {
 
   function open() {
     root.controller.show()
-    if (hostWidget) hostWidget.refresh()
+    if (hostWidget) {
+      hostWidget.refresh()
+      hostWidget.refreshDev()
+      hostWidget.loadDevStatic()
+    }
   }
   function close() { root.controller.hide() }
   function toggle() { if (root.opened) root.close(); else root.open() }
@@ -168,7 +212,10 @@ Panel {
           options: [
             { value: "mixer", label: strings.t("tab.mixer") },
             { value: "mic", label: strings.t("tab.mic") },
-            { value: "sampler", label: strings.t("tab.sampler") }
+            { value: "sampler", label: strings.t("tab.sampler") },
+            { value: "routing", label: strings.t("tab.routing") },
+            { value: "lights", label: strings.t("tab.lights") },
+            { value: "device", label: strings.t("tab.device") }
           ]
           onChanged: function(v) { root.tab = v }
         }
@@ -270,7 +317,7 @@ Panel {
           }
 
           Text {
-            visible: !root.listener.active
+            visible: !root.listener.active && !root.devOk
             width: parent.width
             textFormat: Text.PlainText
             wrapMode: Text.WordWrap
@@ -583,6 +630,482 @@ Panel {
             }
           }
         }
+
+        // ================= Routing =================
+        Column {
+          visible: root.tab === "routing"
+          width: parent.width
+          spacing: Style.space(8)
+
+          DeviceNotice { }
+
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("routing.hint")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          // Cabecera de fuentes
+          Row {
+            id: matrixHead
+            width: parent.width
+            readonly property real labelW: Style.space(64)
+            readonly property real cellW: (width - labelW) / 6
+            Item { width: matrixHead.labelW; height: 1 }
+            Repeater {
+              model: root.srcs
+              Text {
+                required property string modelData
+                width: matrixHead.cellW
+                horizontalAlignment: Text.AlignHCenter
+                textFormat: Text.PlainText
+                text: strings.t("src." + modelData)
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+                elide: Text.ElideRight
+              }
+            }
+          }
+
+          Repeater {
+            model: root.dests
+            Row {
+              id: matrixRow
+              required property string modelData
+              width: parent.width
+              Text {
+                width: matrixHead.labelW
+                height: Style.space(40)
+                verticalAlignment: Text.AlignVCenter
+                textFormat: Text.PlainText
+                text: strings.t("dest." + matrixRow.modelData)
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
+                elide: Text.ElideRight
+              }
+              Repeater {
+                model: root.srcs
+                RouteCell {
+                  required property string modelData
+                  width: matrixHead.cellW
+                  height: Style.space(40)
+                  dest: matrixRow.modelData
+                  src: modelData
+                }
+              }
+            }
+          }
+
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            color: root.hoverCell !== "" ? root.foreground : root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            text: root.hoverCell !== "" ? root.hoverCell : strings.t("routing.usage")
+          }
+
+          PanelSeparator { foreground: root.foreground }
+
+          PanelSectionHeader {
+            text: strings.t("routing.presets")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+
+          Row {
+            visible: root.confirmPreset === ""
+            spacing: Style.space(8)
+            Button {
+              text: strings.t("routing.default")
+              enabled: root.devOk
+              opacity: enabled ? 1.0 : 0.5
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              bordered: true
+              onClicked: root.confirmPreset = "default"
+            }
+            Button {
+              text: strings.t("routing.noChat")
+              enabled: root.devOk
+              opacity: enabled ? 1.0 : 0.5
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              bordered: true
+              onClicked: root.confirmPreset = "no_chat_to_stream"
+            }
+          }
+
+          Column {
+            visible: root.confirmPreset !== ""
+            width: parent.width
+            spacing: Style.space(6)
+            Text {
+              width: parent.width
+              textFormat: Text.PlainText
+              wrapMode: Text.WordWrap
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              text: strings.t("routing.confirm").arg(root.confirmPreset === "default" ? strings.t("routing.default") : strings.t("routing.noChat"))
+            }
+            Row {
+              spacing: Style.space(8)
+              Button {
+                text: strings.t("routing.apply")
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                bordered: true
+                selected: true
+                onClicked: {
+                  var name = root.confirmPreset
+                  root.confirmPreset = ""
+                  if (root.hostWidget) root.hostWidget.routingPreset(name)
+                }
+              }
+              Button {
+                text: strings.t("routing.cancel")
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                bordered: true
+                onClicked: root.confirmPreset = ""
+              }
+            }
+          }
+        }
+
+        // ================= Lights =================
+        Column {
+          visible: root.tab === "lights"
+          width: parent.width
+          spacing: Style.space(8)
+
+          DeviceNotice { }
+
+          PanelSectionHeader {
+            text: strings.t("lights.presets")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+
+          Text {
+            visible: !root.hostWidget || root.hostWidget.ledPresets.length === 0
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("lights.noPresets")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          Flickable {
+            id: presetFlick
+            visible: !!root.hostWidget && root.hostWidget.ledPresets.length > 0
+            width: parent.width
+            height: Math.min(presetFlow.implicitHeight, Style.space(92))
+            contentWidth: width
+            contentHeight: presetFlow.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            Flow {
+              id: presetFlow
+              width: presetFlick.width
+              spacing: Style.space(6)
+              Repeater {
+                model: root.hostWidget ? root.hostWidget.ledPresets : []
+                Button {
+                  required property string modelData
+                  text: modelData
+                  enabled: root.devOk
+                  opacity: enabled ? 1.0 : 0.5
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                  fontSize: Style.font.bodySmall
+                  bordered: true
+                  onClicked: root.hostWidget.applyLedPreset(modelData)
+                }
+              }
+            }
+          }
+
+          PanelSeparator { foreground: root.foreground }
+
+          Item {
+            width: parent.width
+            implicitHeight: Math.max(ctlHeader.implicitHeight, idleTitle.implicitHeight)
+
+            PanelSectionHeader {
+              id: ctlHeader
+              text: strings.t("lights.controls")
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+              id: idleTitle
+              textFormat: Text.PlainText
+              text: strings.t("lights.active") + "   " + strings.t("lights.idle")
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              anchors.right: parent.right
+              anchors.rightMargin: Style.space(2)
+              anchors.verticalCenter: parent.verticalCenter
+            }
+          }
+
+          Text {
+            visible: !root.ledControls
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("lights.noData")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+
+          Flickable {
+            id: ledFlick
+            visible: !!root.ledControls
+            width: parent.width
+            height: Math.min(ledCol.implicitHeight, Style.space(176))
+            contentWidth: width
+            contentHeight: ledCol.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            Column {
+              id: ledCol
+              width: ledFlick.width
+              spacing: Style.space(4)
+              Repeater {
+                model: root.ledControls ? Object.keys(root.ledControls) : []
+                Item {
+                  id: ledRow
+                  required property string modelData
+                  width: ledCol.width
+                  height: Style.space(28)
+                  opacity: root.devOk ? 1.0 : 0.5
+
+                  Text {
+                    anchors.left: parent.left
+                    anchors.right: idleSw.left
+                    anchors.rightMargin: Style.space(8)
+                    anchors.verticalCenter: parent.verticalCenter
+                    textFormat: Text.PlainText
+                    text: root.ledLabel(ledRow.modelData)
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                    font.bold: root.ledEdit === ledRow.modelData
+                    elide: Text.ElideRight
+                  }
+                  Swatch {
+                    id: idleSw
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    index: root.ledValue(ledRow.modelData, "idle")
+                    selected: root.ledEdit === ledRow.modelData && root.ledSlot === "idle"
+                    onClicked: { root.ledEdit = ledRow.modelData; root.ledSlot = "idle" }
+                  }
+                  Swatch {
+                    anchors.right: idleSw.left
+                    anchors.rightMargin: Style.space(10)
+                    anchors.verticalCenter: parent.verticalCenter
+                    index: root.ledValue(ledRow.modelData, "active")
+                    selected: root.ledEdit === ledRow.modelData && root.ledSlot === "active"
+                    onClicked: { root.ledEdit = ledRow.modelData; root.ledSlot = "active" }
+                  }
+                }
+              }
+            }
+          }
+
+          Column {
+            visible: root.ledEdit !== "" && !!root.ledControls
+            width: parent.width
+            spacing: Style.space(6)
+
+            Item {
+              width: parent.width
+              implicitHeight: Math.max(pickTitle.implicitHeight, pickClose.implicitHeight)
+              Text {
+                id: pickTitle
+                anchors.left: parent.left
+                anchors.right: pickClose.left
+                anchors.verticalCenter: parent.verticalCenter
+                textFormat: Text.PlainText
+                text: strings.t("lights.pick").arg(root.ledLabel(root.ledEdit)).arg(root.ledSlot === "active" ? strings.t("lights.active") : strings.t("lights.idle"))
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+                elide: Text.ElideRight
+              }
+              Button {
+                id: pickClose
+                text: "✕"
+                foreground: root.foreground
+                fontFamily: root.fontFamily
+                fontSize: Style.font.bodySmall
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                onClicked: root.ledEdit = ""
+              }
+            }
+
+            Flickable {
+              id: palFlick
+              width: parent.width
+              height: Math.min(palFlow.implicitHeight, Style.space(104))
+              contentWidth: width
+              contentHeight: palFlow.implicitHeight
+              clip: true
+              boundsBehavior: Flickable.StopAtBounds
+
+              Flow {
+                id: palFlow
+                width: palFlick.width
+                spacing: Style.space(4)
+                Repeater {
+                  model: root.paletteKeys
+                  Swatch {
+                    required property string modelData
+                    index: Number(modelData)
+                    selected: root.ledValue(root.ledEdit, root.ledSlot) === Number(modelData)
+                    onClicked: root.pickLed(Number(modelData))
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // ================= Device =================
+        Column {
+          visible: root.tab === "device"
+          width: parent.width
+          spacing: Style.space(10)
+
+          Row {
+            spacing: Style.space(8)
+            Text {
+              textFormat: Text.PlainText
+              text: root.devConnected ? "\u25CF" : "\u25CC"
+              color: root.devConnected ? Color.accent : (root.devOk ? root.urgentColor : root.dim)
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+              textFormat: Text.PlainText
+              text: !root.devOk ? strings.t("dev.unavailable")
+                : (root.devConnected ? strings.t("dev.connected") : strings.t("dev.disconnected"))
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.title
+              font.bold: true
+              anchors.verticalCenter: parent.verticalCenter
+            }
+          }
+
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            text: !root.devOk
+              ? (root.hostWidget && root.hostWidget.devError !== "" ? root.hostWidget.devError : strings.t("dev.unavailableHint"))
+              : (root.dev && typeof root.dev.updated === "number" && root.dev.updated > 0
+                  ? strings.t("dev.updated").arg(Qt.formatTime(new Date(root.dev.updated * 1000), "hh:mm:ss"))
+                  : strings.t("dev.neverRead"))
+          }
+
+          Row {
+            spacing: Style.space(8)
+            Button {
+              text: root.hostWidget && root.hostWidget.devRefreshing ? strings.t("dev.refreshing") : strings.t("dev.refresh")
+              enabled: !!root.hostWidget && !root.hostWidget.devRefreshing
+              opacity: enabled ? 1.0 : 0.6
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              bordered: true
+              onClicked: root.hostWidget.devRefreshFromDevice()
+            }
+          }
+
+          PanelSeparator { foreground: root.foreground }
+
+          Item {
+            width: parent.width
+            implicitHeight: Math.max(phText.implicitHeight, phSwitch.implicitHeight)
+
+            Column {
+              id: phText
+              anchors.left: parent.left
+              anchors.right: phSwitch.left
+              anchors.rightMargin: Style.space(12)
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(2)
+              Text {
+                width: parent.width
+                textFormat: Text.PlainText
+                text: strings.t("dev.phantom")
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.title
+                font.bold: true
+                elide: Text.ElideRight
+              }
+              Text {
+                width: parent.width
+                textFormat: Text.PlainText
+                wrapMode: Text.WordWrap
+                text: strings.t("dev.phantomWarn")
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+            }
+
+            ToggleSwitch {
+              id: phSwitch
+              checked: !!root.dev && Number(root.dev.phantom) === 1
+              enabled: root.devOk && !!root.dev && (root.dev.phantom === 0 || root.dev.phantom === 1)
+              opacity: enabled ? 1.0 : 0.5
+              foreground: root.foreground
+              accent: Color.accent
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              onToggled: root.hostWidget.setPhantom(!phSwitch.checked)
+            }
+          }
+
+          Text {
+            visible: !!root.dev && root.dev.phantom === null
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            text: strings.t("dev.phantomUnknown")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+        }
       }
     }
   }
@@ -799,11 +1322,148 @@ Panel {
     }
   }
 
-  // Estado de un botón físico con memoria (mute). Solo lectura: "desconocido" hasta la primera pulsación.
+  // Aviso en línea cuando no hay respuesta del equipo.
+  component DeviceNotice: Text {
+    visible: !root.devOk || !root.devConnected
+    width: parent.width
+    textFormat: Text.PlainText
+    wrapMode: Text.WordWrap
+    color: root.devOk ? root.dim : root.urgentColor
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.bodySmall
+    text: root.devOk ? strings.t("dev.staleNotice") : strings.t("dev.unavailableInline")
+  }
+
+  // Muestra de color de la paleta de LEDs; sin RGB conocido, el número.
+  component Swatch: Rectangle {
+    id: sw
+    property int index: -1
+    property bool selected: false
+    readonly property string hex: index >= 0 ? root.paletteColor(index) : ""
+    signal clicked()
+    width: Style.space(22)
+    height: Style.space(22)
+    radius: Math.min(Style.cornerRadius, Style.space(5))
+    color: hex !== "" ? hex : Qt.alpha(root.foreground, 0.1)
+    border.width: selected ? 2 : 1
+    border.color: selected ? root.foreground : Qt.alpha(root.foreground, 0.3)
+    Text {
+      visible: sw.hex === ""
+      anchors.centerIn: parent
+      textFormat: Text.PlainText
+      text: sw.index >= 0 ? String(sw.index) : "–"
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+    MouseArea {
+      anchors.fill: parent
+      cursorShape: Qt.PointingHandCursor
+      onClicked: sw.clicked()
+    }
+  }
+
+  // Una celda de la matriz de ruteo: clic enciende/apaga, arrastrar o rueda ajusta la ganancia.
+  component RouteCell: Item {
+    id: cell
+    property string dest: "stream"
+    property string src: "mic"
+    readonly property int g: root.gainOf(dest, src)
+    readonly property bool known: g >= 0
+    readonly property bool on: known && g > 0
+    readonly property bool muted: root.isMuted(dest, src)
+    readonly property string desc: strings.t("dest." + dest) + " ← " + strings.t("src." + src)
+      + " · " + (known ? (on ? String(g) + " / 127" : strings.t("routing.off")) : "–")
+      + (muted ? " · " + strings.t("routing.hwMuted") : "")
+
+    Rectangle {
+      id: face
+      anchors.fill: parent
+      anchors.margins: 2
+      radius: Math.min(Style.cornerRadius, Style.space(6))
+      color: Qt.alpha(root.foreground, area.containsMouse ? 0.12 : 0.06)
+      border.width: 1
+      border.color: cell.muted ? root.urgentColor : Qt.alpha(root.foreground, cell.on ? 0.3 : 0.14)
+      clip: true
+
+      Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: cell.on ? parent.height * cell.g / 127 : 0
+        color: Qt.alpha(Color.accent, cell.muted ? 0.22 : 0.5)
+      }
+      // Marca de ganancia unidad (115)
+      Rectangle {
+        visible: cell.known
+        anchors.left: parent.left
+        anchors.right: parent.right
+        y: parent.height * (1 - 115 / 127)
+        height: 1
+        color: Qt.alpha(root.foreground, 0.55)
+      }
+      Text {
+        anchors.centerIn: parent
+        textFormat: Text.PlainText
+        text: !cell.known ? "–" : (cell.on ? String(cell.g) : strings.t("routing.offShort"))
+        color: cell.on ? root.foreground : root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        font.bold: cell.on
+        opacity: cell.muted ? 0.6 : 1.0
+      }
+      // Silenciado desde un botón físico
+      Text {
+        visible: cell.muted
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: Style.space(2)
+        textFormat: Text.PlainText
+        text: "󰝟"
+        color: root.urgentColor
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+      }
+    }
+
+    MouseArea {
+      id: area
+      anchors.fill: parent
+      enabled: cell.known
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      property real pressY: 0
+      property int startGain: 0
+      property bool moved: false
+      function snap(v) { return Math.abs(v - 115) <= 3 ? 115 : v }
+      onEntered: root.hoverCell = cell.desc
+      onExited: root.hoverCell = ""
+      onPressed: function(m) { pressY = m.y; startGain = cell.g; moved = false }
+      onPositionChanged: function(m) {
+        if (!pressed) return
+        var dy = pressY - m.y
+        if (!moved && Math.abs(dy) < 5) return
+        moved = true
+        var v = snap(Math.round(Math.max(0, Math.min(127, startGain + dy / (cell.height * 2.5) * 127))))
+        if (v !== cell.g) root.hostWidget.setGain(cell.dest, cell.src, v)
+      }
+      onReleased: if (!moved) root.hostWidget.toggleRoute(cell.dest, cell.src)
+      onWheel: function(w) {
+        var v = Math.max(0, Math.min(127, cell.g + (w.angleDelta.y > 0 ? 4 : -4)))
+        v = snap(v)
+        if (v !== cell.g) root.hostWidget.setGain(cell.dest, cell.src, v)
+      }
+    }
+    onDescChanged: if (area.containsMouse) root.hoverCell = desc
+  }
+
+  // Estado de un botón físico (mute). Solo lectura: sale del equipo (device.json) y, si no hay dato, de hw.json.
   component HwChip: Row {
     id: chip
     property string name: "mic_mute"
-    readonly property var value: root.mixer && root.mixer.hw ? root.mixer.hw[name] : null
+    readonly property var devValue: root.dev && root.dev.buttons ? root.dev.buttons[name] : null
+    readonly property var hwValue: root.mixer && root.mixer.hw ? root.mixer.hw[name] : null
+    readonly property var value: devValue !== null && devValue !== undefined ? devValue : hwValue
     readonly property color tint: value === true ? (root.bar ? root.bar.urgent : "#e06c75")
       : (value === false ? root.foreground : root.dim)
     spacing: Style.space(5)

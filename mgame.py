@@ -39,6 +39,16 @@ Protocolo SysEx (ver docs/protocol.md)
   send-raw HEX                    valida y envía una trama a la M-Game (amidi)
   get PARAM_HEX [--sub N] [--timeout S]   pide un parámetro e imprime las respuestas
 
+Dispositivo (JSON por stdout, ver docs/device-api.md)
+  dev-state [--refresh]           estado completo (device.json); --refresh pide todo al aparato
+  dev-gain DEST SRC 0..127        ganancia de una ruta del mezclador
+  dev-route DEST SRC on|off       enciende/apaga una ruta (recuerda la ganancia)
+  dev-routing-preset NOMBRE       default | no_chat_to_stream
+  dev-phantom on|off              alimentación fantasma 48 V
+  dev-led CONTROL ACTIVE IDLE [MODE]   color de un LED de botón/pad
+  dev-led-presets                 lista de presets de LEDs
+  dev-led-preset NOMBRE           aplica un preset de LEDs
+
 PARES = ocho pares separados por coma, en este orden:
   game,chat,sampler,system,in_stream,in_alt,in_chat,in_sampler
 """
@@ -47,6 +57,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 
 HOME = os.path.expanduser("~")
@@ -145,12 +156,7 @@ def pactl_json(*args):
         return []
 
 
-def atomic_write(path, text):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        fh.write(text)
-    os.replace(tmp, path)
+from mgame_device import atomic_write  # noqa: E402  (única implementación, temporal único)
 
 
 def load_json(path, default):
@@ -208,7 +214,9 @@ def load_state():
 
 
 def save_state(state):
-    atomic_write(STATE_PATH, json.dumps(state, indent=2, ensure_ascii=False) + "\n")
+    merged = load_json(STATE_PATH, {})  # conserva claves ajenas (p. ej. routeMemory)
+    merged.update(state)
+    atomic_write(STATE_PATH, json.dumps(merged, indent=2, ensure_ascii=False) + "\n")
 
 
 def mic_params(state):
@@ -620,7 +628,69 @@ def log_sysex(data):
         fh.write(time.strftime("%H:%M:%S ") + " ".join(data) + "\n")
 
 
+REFRESH_GAP = 0.01       # s entre gets del refresco
+REFRESH_QUIET = 8.0      # s tras arrancar sin loguear las tramas ya conocidas (evita llenar sysex.log)
+
+
+def amidi_send_quiet(port, frame):
+    import mgame_proto
+    try:
+        res = run("amidi", "-p", port, "-S", mgame_proto.to_hex(frame).replace(" ", ""), timeout=5)
+        return res.returncode == 0
+    except Exception:
+        return False
+
+
+def _hex_batch(frames):
+    import mgame_proto
+    return " ".join(mgame_proto.to_hex(f).replace(" ", "") for f in frames)
+
+
+GET_CHUNK = 16           # gets por llamada a amidi en un refresco
+GET_PAUSE = 0.03         # s entre lotes de gets: con un solo lote de 64 el equipo perdía alguna respuesta
+
+
+def amidi_send_batch_quiet(port, frames, size=None, pause=0.0):
+    """Varias tramas por llamada a amidi (-S admite mensajes concatenados). True si todas salieron."""
+    import mgame_device
+    ok = True
+    for i, chunk in enumerate(mgame_device.chunked(frames, size or mgame_device.BATCH_LIMIT)):
+        if i and pause:
+            time.sleep(pause)
+        try:
+            res = run("amidi", "-p", port, "-S", _hex_batch(chunk), timeout=10)
+            ok = ok and res.returncode == 0
+        except Exception:
+            ok = False
+    return ok
+
+
+def amidi_send_batch(port, frames):
+    import mgame_device
+    for chunk in mgame_device.chunked(frames):
+        res = run("amidi", "-p", port, "-S", _hex_batch(chunk), timeout=10)
+        if res.returncode != 0:
+            raise SystemExit("amidi no pudo enviar (¿puerto ocupado?): " + res.stderr.strip()[:200])
+
+
+def refresh_device(leds, gap=None):
+    """Envía todos los gets para conocer el estado. Reintenta mientras el rawmidi no aparezca."""
+    import mgame_device
+    port = None
+    for _ in range(20):
+        port = find_rawmidi()
+        if port:
+            break
+        time.sleep(0.5)
+    if not port:
+        return False
+    amidi_send_batch_quiet(port, mgame_device.refresh_frames(leds), GET_CHUNK, GET_PAUSE)
+    return True
+
+
 def listen():
+    import mgame_device
+    import mgame_proto
     ensure_dirs()
     client, patterns = pads_config()
     if not patterns:
@@ -632,36 +702,56 @@ def listen():
         raise SystemExit(1)
     proc = subprocess.Popen(["aseqdump", "-p", port], stdout=subprocess.PIPE,
                             stderr=subprocess.DEVNULL, text=True, bufsize=1)
+    ledmap = mgame_device.LedMapCache()
+    ledmap.refresh()
+    dev = mgame_device.DeviceState(ledmap.leds)
+    dev.connected = True
+    dev.save()
+    hw_last = dev.hw()
+    write_hw(hw_last)  # al arrancar todo es desconocido hasta que llegan las respuestas del refresco
+    quiet_until = time.monotonic() + REFRESH_QUIET
+    threading.Thread(target=lambda: refresh_device(ledmap.leds), daemon=True).start()
     pending, last = [], {}
-    hw = {name: None for name in MUTE_BUTTONS}
-    hw.update(page=None, bank=None)
-    write_hw(hw)  # al arrancar todo es desconocido hasta la primera pulsación
-    for line in proc.stdout:
-        if "System exclusive" not in line:
-            continue
-        toks = [t.upper() for t in line.split("System exclusive", 1)[1].split()
-                if re.fullmatch(r"[0-9A-Fa-f]{2}", t)]
-        data = pending + toks
-        if not data or data[-1] != "F7":
-            pending = data[:512]
-            continue
-        pending = []
-        log_sysex(data)
-        _, patterns = pads_config()
-        for name, spec in buttons_config().items():
-            for state, pattern in spec.items():
-                if sysex_matches(pattern, data):
-                    apply_button(hw, name, state == "on")
+    try:
+        for line in proc.stdout:
+            if "System exclusive" not in line:
+                continue
+            toks = [t.upper() for t in line.split("System exclusive", 1)[1].split()
+                    if re.fullmatch(r"[0-9A-Fa-f]{2}", t)]
+            data = pending + toks
+            if not data or data[-1] != "F7":
+                pending = data[:512]
+                continue
+            pending = []
+            now = time.monotonic()
+            _, patterns = pads_config()
+            for pad, pattern in patterns.items():
+                if sysex_matches(pattern, data) and now - last.get(pad, 0) > 0.05:
+                    last[pad] = now
+                    try:
+                        play_pad(pad)
+                    except (SystemExit, OSError):
+                        pass
+            try:
+                msg = mgame_proto.parse(bytes(int(t, 16) for t in data))
+            except ValueError:
+                msg = None
+            known = changed = False
+            if msg is not None:
+                if ledmap.refresh():
+                    dev.set_leds(ledmap.leds)
+                known, changed = dev.ingest(msg)
+                dev.save(changed=changed)
+                hw = dev.hw()
+                if hw != hw_last:
+                    hw_last = hw
                     write_hw(hw)
-        now = time.monotonic()
-        for pad, pattern in patterns.items():
-            if sysex_matches(pattern, data) and now - last.get(pad, 0) > 0.05:
-                last[pad] = now
-                try:
-                    play_pad(pad)
-                except (SystemExit, OSError):
-                    pass
-    write_hw({name: None for name in list(MUTE_BUTTONS) + ["page", "bank"]})
+            if not (known and now < quiet_until):
+                log_sysex(data)
+    finally:
+        dev.connected = False
+        dev.save()
+        write_hw({name: None for name in list(MUTE_BUTTONS) + ["page", "bank"]})
     raise SystemExit(1)
 
 
@@ -836,6 +926,212 @@ def status(pairs):
     return out
 
 
+# ------------------------- control del dispositivo (dev-*) ------------------
+DEV_USAGE = {
+    "dev-state": "dev-state [--refresh]",
+    "dev-gain": "dev-gain DEST SRC 0..127",
+    "dev-route": "dev-route DEST SRC on|off",
+    "dev-routing-preset": "dev-routing-preset default|no_chat_to_stream",
+    "dev-phantom": "dev-phantom on|off",
+    "dev-led": "dev-led CONTROL ACTIVE IDLE [MODE]",
+    "dev-led-presets": "dev-led-presets",
+    "dev-led-preset": "dev-led-preset NAME",
+}
+WRITE_GAP = 0.03
+WAIT_REPLIES = 2.0
+
+
+def dev_port():
+    import mgame_device
+    port = find_rawmidi()
+    if not port:
+        raise mgame_device.DevError("no se encontró el rawmidi de la M-Game")
+    return port
+
+
+def dev_write(port, param, values, leds=None):
+    import mgame_device
+    amidi_send(port, mgame_device.checked_set(param, values, leds))
+
+
+def route_memory():
+    mem = load_json(STATE_PATH, {}).get("routeMemory")
+    return mem if isinstance(mem, dict) else {}
+
+
+def remember_gains(items):
+    """items = [(dest, src, valor)] con valor > 0; se guarda en state.json['routeMemory']."""
+    st = load_json(STATE_PATH, {})  # recarga justo antes de escribir: no perder claves ajenas
+    mem = st.get("routeMemory") if isinstance(st.get("routeMemory"), dict) else {}
+    for dest, src, val in items:
+        row = mem.get(dest) if isinstance(mem.get(dest), dict) else {}
+        row[src] = val
+        mem[dest] = row
+    st["routeMemory"] = mem
+    atomic_write(STATE_PATH, json.dumps(st, indent=2, ensure_ascii=False) + "\n")
+
+
+def dev_state(refresh):
+    import mgame_device
+    if not refresh:
+        return {"ok": True, **mgame_device.load_device_json()}
+    cache = mgame_device.LedMapCache()
+    cache.refresh()
+    port = dev_port()
+    frames = mgame_device.refresh_frames(cache.leds)
+    if listener_state()["active"]:
+        try:
+            before = os.stat(mgame_device.DEVICE_PATH).st_mtime_ns
+        except OSError:
+            before = None
+        amidi_send_batch_quiet(port, frames, GET_CHUNK, GET_PAUSE)
+        deadline = time.monotonic() + WAIT_REPLIES
+        seen, quiet_since = None, time.monotonic()
+        while time.monotonic() < deadline:
+            try:
+                cur = os.stat(mgame_device.DEVICE_PATH).st_mtime_ns
+            except OSError:
+                cur = None
+            if cur != seen:
+                seen, quiet_since = cur, time.monotonic()
+            elif cur != before and time.monotonic() - quiet_since > 0.4:
+                break
+            time.sleep(0.05)
+        return {"ok": True, **mgame_device.load_device_json()}
+    # sin listener el puerto está libre: leemos las respuestas directamente
+    est = REFRESH_GAP * len(frames) + 3
+    rx = subprocess.Popen(["amidi", "-p", port, "-d", "-t", "2"],
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    time.sleep(0.2)
+    if rx.poll() is not None:
+        raise mgame_device.DevError("amidi no pudo abrir el puerto para leer: " + (rx.stderr.read() or "").strip()[:200])
+    amidi_send_batch_quiet(port, frames, GET_CHUNK, GET_PAUSE)
+    try:
+        out, _ = rx.communicate(timeout=est + 5)
+    except subprocess.TimeoutExpired:
+        rx.kill()
+        out, _ = rx.communicate()
+    import mgame_proto
+    dev = mgame_device.DeviceState(cache.leds)
+    dev.connected = True
+    got = 0
+    for fr in mgame_device.frames_from_dump(out):
+        msg = mgame_proto.parse(fr)
+        if msg is not None:
+            dev.ingest(msg)
+            got += 1
+    if not got:
+        raise mgame_device.DevError("la M-Game no respondió")
+    dev.save(changed=True)
+    return {"ok": True, **dev.to_dict()}
+
+
+def dev_route(dest, src, mode):
+    import mgame_device
+    if mode not in ("on", "off"):
+        raise mgame_device.DevError("modo: on u off")
+    param, _ = mgame_device.build_gain(dest, src, "0")
+    port = dev_port()
+    if mode == "off":
+        cur = mgame_device.load_device_json().get("gain", {}).get(dest, {}).get(src)
+        dev_write(port, param, [0])
+        if isinstance(cur, int) and 0 < cur <= 127:
+            remember_gains([(dest, src, cur)])
+        return {"ok": True, "dest": dest, "src": src, "value": 0, "remembered": cur if cur else None}
+    mem = route_memory().get(dest, {})
+    val = mem.get(src) if isinstance(mem, dict) else None
+    if not isinstance(val, int) or isinstance(val, bool) or not 1 <= val <= 127:
+        val = mgame_device.DEFAULT_GAIN
+    dev_write(port, param, [val])
+    return {"ok": True, "dest": dest, "src": src, "value": val}
+
+
+def dev_main(cmd, args):
+    """Ejecuta un dev-*; imprime un objeto JSON y devuelve el código de salida."""
+    import mgame_device
+    err = mgame_device.DevError
+    try:
+        res = dev_dispatch(cmd, args)
+    except err as exc:
+        res = {"ok": False, "error": str(exc)}
+    except SystemExit as exc:
+        if not isinstance(exc.code, str):
+            raise
+        res = {"ok": False, "error": exc.code}
+    except Exception as exc:  # nunca un traceback hacia el panel
+        res = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:200]}
+    print(json.dumps(res))
+    return 0 if res.get("ok") else 1
+
+
+def dev_dispatch(cmd, args):
+    import mgame_device as md
+
+    def usage():
+        return md.DevError("uso: " + DEV_USAGE[cmd])
+
+    if cmd == "dev-state":
+        if args not in ([], ["--refresh"]):
+            raise usage()
+        return dev_state(bool(args))
+    if cmd == "dev-gain":
+        if len(args) != 3:
+            raise usage()
+        param, vals = md.build_gain(*args)
+        dev_write(dev_port(), param, vals)
+        return {"ok": True, "dest": args[0], "src": args[1], "value": vals[0], "param": md.hex8(param)}
+    if cmd == "dev-route":
+        if len(args) != 3:
+            raise usage()
+        return dev_route(*args)
+    if cmd == "dev-routing-preset":
+        if len(args) != 1:
+            raise usage()
+        items = md.load_routing_preset(args[0])
+        port = dev_port()
+        frames = [md.checked_set(param, [val]) for _, _, param, val in items]
+        amidi_send_batch(port, frames)
+        remember_gains([(d, s, v) for d, s, _, v in items if v > 0])
+        return {"ok": True, "preset": args[0], "count": len(items)}
+    if cmd == "dev-phantom":
+        if len(args) != 1:
+            raise usage()
+        param, vals = md.build_phantom(args[0])
+        dev_write(dev_port(), param, vals)
+        return {"ok": True, "phantom": vals[0]}
+    if cmd == "dev-led":
+        if len(args) not in (3, 4):
+            raise usage()
+        leds = md.load_leds()
+        active = md.int_arg(args[1], 0, 127, "active")
+        idle = md.int_arg(args[2], 0, 127, "idle")
+        if len(args) == 4:
+            mode = md.int_arg(args[3], 0, 0xFFFFFFFF, "mode")
+            if mode not in md.known_led_modes():
+                raise md.DevError("mode no reconocido (solo los de data/led_presets)")
+        else:
+            cur = md.load_device_json().get("leds", {}).get(args[0], {}).get("mode")
+            mode = cur if isinstance(cur, int) and not isinstance(cur, bool) else 0
+        param, vals = md.build_led(args[0], active, idle, mode, leds)
+        dev_write(dev_port(), param, vals, leds)
+        return {"ok": True, "control": args[0], "param": md.hex8(param),
+                "mode": vals[0], "active": vals[1], "idle": vals[2]}
+    if cmd == "dev-led-presets":
+        if args:
+            raise usage()
+        return {"ok": True, "presets": sorted(md.list_led_presets())}
+    if cmd == "dev-led-preset":
+        if len(args) != 1:
+            raise usage()
+        leds = md.load_leds()
+        items, skipped = md.load_led_preset(args[0], leds)
+        port = dev_port()
+        frames = [md.checked_set(param, vals, leds) for _, param, vals in items]
+        amidi_send_batch(port, frames)
+        return {"ok": True, "preset": args[0], "count": len(items), "skipped": skipped}
+    raise md.DevError("comando desconocido")
+
+
 # ------------------------------- CLI ---------------------------------------
 def key_arg(value, allowed=None):
     allowed = allowed or tuple(NODE_NAMES)
@@ -856,6 +1152,11 @@ def main(argv):
     if len(argv) < 2:
         raise SystemExit(__doc__)
     cmd, args = argv[1], argv[2:]
+    if cmd.startswith("dev-"):
+        if cmd not in DEV_USAGE:
+            print(json.dumps({"ok": False, "error": "comando desconocido"}))
+            raise SystemExit(1)
+        raise SystemExit(dev_main(cmd, args))
 
     def need(n):
         if len(args) < n:

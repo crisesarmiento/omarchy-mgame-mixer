@@ -436,3 +436,13 @@ Not tested on hardware. Do not send the gain, phantom or LED frames without firs
 1. Get replies are unverified: no Get was ever captured on this unit, so the reply format (byte 5 = 0 or 1) and whether the firmware answers all ids is unknown.
 2. LED value semantics (V1 mode byte, brightness, palette) are inferred from preset files only; a wrong write could leave pads in an odd state until reset.
 3. Persistence is unknown for `0x5F0000xx`, `0x50xxxxxx`, `0x4100xxxx`, `0x01040300`; plus the external `FirmwareUpdater` may use messages that look like normal sets.
+
+## Pass 3: LED data files, palette, gain, voice-FX knob
+
+Generated data lives in `data/` (`data/tools/convert_leds.py` rebuilds it from the Mac files).
+
+- **Palette [O]**: `MA::LAppEngine::InitColorArrays` (`0x1002fb5c2`) builds a 128-entry ARGB table; the LED colour byte in every button/array word is the index (`GetColorFromMidiValue` `0x1002ff65c`). 0 and 1 are black, 2..25 dim (0x55-scaled) hues, 26..51 mixed, 52..75 full-saturation hues, 76 grey, 77..100 pastel-bright, 101..125 pastel, 126 light grey, 127 white. This explains `V3 = V2 + 0x32`: V2 is the dim twin of V3's full-brightness colour (2 = `#550000`, 52 = `#FF0000`). Stored in `data/leds.json` `palette`.
+- **Sample LEDs [I]**: 10 sample labels exist (Bank 1/2 x Sample 1..5), and 10 sample LED records (`0x78 + 8k`, k=0..9) map to `0x01030A00 + 0x100*k`. So `0x01030A00/0B00` are samples 1-2, not "unassigned" LEDs as written above, and the helper's `pad_1` (`0x01030C00`) is sample 3 under that reading. Which physical pad lights for which param is unverified; `data/leds.json` `aliases` keeps the `pad_N` names.
+- **Presets**: 23 LED presets, each with 64 records; only the 42 records with a device param (10 samples, 4 mutes, 4 voice-FX, mic-mute, censor, 13 labels, 9 arrays) are converted. Records `0x7F`-twins and `0xE6..0xF3` have no device param in Translate. Preset words are replayed verbatim.
+- **Gain -> dB [U]**: not found. `LMixerGain` only translates `0x44000000 + dest*0x100 + src*2` with no curve, and no display conversion was located in the Panel in a time-boxed search. Keep the 0..127 raw scale.
+- **`0x01040300` N=4 [U]**: observed `[0x01050000, 0x7F, 4, 0x10]`; no new decoding. Word 0 is probably a target param id like the file's `0x41000002`, but `0x0105xxxx` is a new family; words 1..3 unknown.

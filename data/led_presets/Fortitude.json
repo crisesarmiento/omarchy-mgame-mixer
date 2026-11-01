@@ -1,0 +1,767 @@
+{
+  "name": "Fortitude",
+  "leds": {
+    "sample_1": {
+      "values": [
+        0,
+        9,
+        59
+      ],
+      "mode": 0,
+      "active": 9,
+      "idle": 59,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "sample_2": {
+      "values": [
+        0,
+        9,
+        59
+      ],
+      "mode": 0,
+      "active": 9,
+      "idle": 59,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "sample_3": {
+      "values": [
+        0,
+        9,
+        59
+      ],
+      "mode": 0,
+      "active": 9,
+      "idle": 59,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "sample_4": {
+      "values": [
+        0,
+        9,
+        59
+      ],
+      "mode": 0,
+      "active": 9,
+      "idle": 59,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "sample_5": {
+      "values": [
+        0,
+        9,
+        59
+      ],
+      "mode": 0,
+      "active": 9,
+      "idle": 59,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "sample_6": {
+      "values": [
+        0,
+        9,
+        59
+      ],
+      "mode": 0,
+      "active": 9,
+      "idle": 59,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "sample_7": {
+      "values": [
+        0,
+        9,
+        59
+      ],
+      "mode": 0,
+      "active": 9,
+      "idle": 59,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "sample_8": {
+      "values": [
+        0,
+        9,
+        59
+      ],
+      "mode": 0,
+      "active": 9,
+      "idle": 59,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "sample_9": {
+      "values": [
+        0,
+        9,
+        59
+      ],
+      "mode": 0,
+      "active": 9,
+      "idle": 59,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "sample_10": {
+      "values": [
+        0,
+        9,
+        59
+      ],
+      "mode": 0,
+      "active": 9,
+      "idle": 59,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "mute_game": {
+      "values": [
+        0,
+        10,
+        58
+      ],
+      "mode": 0,
+      "active": 10,
+      "idle": 58,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "mute_chat": {
+      "values": [
+        0,
+        21,
+        97
+      ],
+      "mode": 0,
+      "active": 21,
+      "idle": 97,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "mute_sampler": {
+      "values": [
+        0,
+        23,
+        122
+      ],
+      "mode": 0,
+      "active": 23,
+      "idle": 122,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "mute_main_alt": {
+      "values": [
+        0,
+        5,
+        54
+      ],
+      "mode": 0,
+      "active": 5,
+      "idle": 54,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "voice_fx_1": {
+      "values": [
+        0,
+        18,
+        68
+      ],
+      "mode": 0,
+      "active": 18,
+      "idle": 68,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "voice_fx_2": {
+      "values": [
+        0,
+        18,
+        68
+      ],
+      "mode": 0,
+      "active": 18,
+      "idle": 68,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "voice_fx_3": {
+      "values": [
+        0,
+        18,
+        68
+      ],
+      "mode": 0,
+      "active": 18,
+      "idle": 68,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "voice_fx_4": {
+      "values": [
+        0,
+        18,
+        68
+      ],
+      "mode": 0,
+      "active": 18,
+      "idle": 68,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "mic_mute": {
+      "values": [
+        0,
+        26,
+        127
+      ],
+      "mode": 0,
+      "active": 26,
+      "idle": 127,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "swear": {
+      "values": [
+        0,
+        26,
+        127
+      ],
+      "mode": 0,
+      "active": 26,
+      "idle": 127,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_0": {
+      "values": [
+        0,
+        26,
+        64
+      ],
+      "mode": 0,
+      "active": 26,
+      "idle": 64,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_1": {
+      "values": [
+        0,
+        68,
+        68
+      ],
+      "mode": 0,
+      "active": 68,
+      "idle": 68,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_2": {
+      "values": [
+        0,
+        26,
+        64
+      ],
+      "mode": 0,
+      "active": 26,
+      "idle": 64,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_3": {
+      "values": [
+        0,
+        26,
+        127
+      ],
+      "mode": 0,
+      "active": 26,
+      "idle": 127,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_4": {
+      "values": [
+        0,
+        26,
+        127
+      ],
+      "mode": 0,
+      "active": 26,
+      "idle": 127,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_5": {
+      "values": [
+        0,
+        89,
+        127
+      ],
+      "mode": 0,
+      "active": 89,
+      "idle": 127,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_6": {
+      "values": [
+        0,
+        89,
+        127
+      ],
+      "mode": 0,
+      "active": 89,
+      "idle": 127,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_7": {
+      "values": [
+        0,
+        26,
+        127
+      ],
+      "mode": 0,
+      "active": 26,
+      "idle": 127,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_8": {
+      "values": [
+        0,
+        89,
+        127
+      ],
+      "mode": 0,
+      "active": 89,
+      "idle": 127,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_9": {
+      "values": [
+        0,
+        59,
+        63
+      ],
+      "mode": 0,
+      "active": 59,
+      "idle": 63,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_10": {
+      "values": [
+        0,
+        97,
+        63
+      ],
+      "mode": 0,
+      "active": 97,
+      "idle": 63,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_11": {
+      "values": [
+        0,
+        122,
+        63
+      ],
+      "mode": 0,
+      "active": 122,
+      "idle": 63,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_label_12": {
+      "values": [
+        0,
+        54,
+        63
+      ],
+      "mode": 0,
+      "active": 54,
+      "idle": 63,
+      "mode_bytes": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_array_0": {
+      "values": [
+        6,
+        17535,
+        0,
+        0
+      ],
+      "bytes": [
+        6,
+        0,
+        0,
+        0,
+        127,
+        68,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_array_1": {
+      "values": [
+        16777222,
+        9018,
+        0,
+        0
+      ],
+      "bytes": [
+        6,
+        0,
+        0,
+        1,
+        58,
+        35,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_array_2": {
+      "values": [
+        33554438,
+        5473,
+        0,
+        0
+      ],
+      "bytes": [
+        6,
+        0,
+        0,
+        2,
+        97,
+        21,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_array_3": {
+      "values": [
+        50331654,
+        6266,
+        0,
+        0
+      ],
+      "bytes": [
+        6,
+        0,
+        0,
+        3,
+        122,
+        24,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_array_4": {
+      "values": [
+        67108870,
+        14390,
+        0,
+        0
+      ],
+      "bytes": [
+        6,
+        0,
+        0,
+        4,
+        54,
+        56,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "led_array_5": {
+      "values": [
+        83886084,
+        1077952576,
+        1077952576,
+        2130722880
+      ],
+      "bytes": [
+        4,
+        0,
+        0,
+        5,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        0,
+        127
+      ]
+    },
+    "led_array_6": {
+      "values": [
+        83886084,
+        2139062143,
+        2139062143,
+        1073774463
+      ],
+      "bytes": [
+        4,
+        0,
+        0,
+        5,
+        127,
+        127,
+        127,
+        127,
+        127,
+        127,
+        127,
+        127,
+        127,
+        127,
+        0,
+        64
+      ]
+    },
+    "led_array_7": {
+      "values": [
+        0,
+        1566393156,
+        1515936604,
+        16474
+      ],
+      "bytes": [
+        0,
+        0,
+        0,
+        0,
+        68,
+        67,
+        93,
+        93,
+        92,
+        91,
+        91,
+        90,
+        90,
+        64,
+        0,
+        0
+      ]
+    },
+    "led_array_8": {
+      "values": [
+        0,
+        1566393156,
+        1515936604,
+        16474
+      ],
+      "bytes": [
+        0,
+        0,
+        0,
+        0,
+        68,
+        67,
+        93,
+        93,
+        92,
+        91,
+        91,
+        90,
+        90,
+        64,
+        0,
+        0
+      ]
+    }
+  }
+}
