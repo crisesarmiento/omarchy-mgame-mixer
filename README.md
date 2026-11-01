@@ -5,7 +5,7 @@ output and one 8-channel input. This plugin splits them with PipeWire into the s
 channels the Windows software offers, adds a microphone processing chain, and drives a
 sampler from the hardware pads.
 
-Plugin id: `csarmiento.mgame-mixer`. The UI is available in English and Spanish.
+Plugin id: `io.github.crisesarmiento.mgame-mixer`. The UI is available in English and Spanish.
 
 <p align="center">
   <img src="screenshots/mixer.png" alt="Mixer tab: four outputs, four inputs, and the hardware mute buttons" width="280">
@@ -60,7 +60,7 @@ Plugin id: `csarmiento.mgame-mixer`. The UI is available in English and Spanish.
 omarchy plugin add https://github.com/crisesarmiento/omarchy-mgame-mixer.git --enable
 ```
 
-That clones the repo into `~/.config/omarchy/plugins/csarmiento.mgame-mixer` and puts the
+That clones the repo into `~/.config/omarchy/plugins/io.github.crisesarmiento.mgame-mixer` and puts the
 headset icon on the bar. To develop from a local checkout instead:
 
 ```bash
@@ -150,6 +150,46 @@ on the switch, and removed from autostart when you turn it off.
 State lives in `~/.config/mgame-mixer/state.json` (mic preset, sample assignments).
 The helper only runs `pactl`, `pw-play`, `pw-cli`, `pw-dump`, `aseqdump`, `pkill`
 and `systemctl --user`, always as argument lists, with every value checked against a fixed list.
+
+## Uninstall
+
+Turn off the "Hardware pads" and app-routing switches in the panel first, or stop the
+user services by hand, then remove the plugin and the files it wrote:
+
+```bash
+systemctl --user disable --now mgame-mixer-pads.service mgame-mixer-apps.service
+rm -f ~/.config/systemd/user/mgame-mixer-pads.service \
+      ~/.config/systemd/user/mgame-mixer-apps.service
+systemctl --user daemon-reload
+
+omarchy plugin remove io.github.crisesarmiento.mgame-mixer
+
+rm -f ~/.config/pipewire/pipewire.conf.d/50-mgame-split.conf \
+      ~/.config/pipewire/pipewire.conf.d/51-mgame-mic.conf
+systemctl --user restart pipewire pipewire-pulse wireplumber   # cuts audio for a few seconds
+
+# Optional: your settings, profiles, app rules, samples and logs
+rm -rf ~/.config/mgame-mixer ~/.local/share/mgame-mixer ~/.local/state/mgame-mixer
+```
+
+`~/.config/mgame-mixer` holds `state.json`, `pads.json`, `buttons.json`, `app-rules.json`
+and `profiles/`. Your own sounds live in `~/.local/share/mgame-mixer/samples`, so back
+them up before deleting it.
+
+## Upgrading from `csarmiento.mgame-mixer`
+
+Versions before 0.3.1 used the id `csarmiento.mgame-mixer`. The new id installs into a
+different folder, and the systemd units point at the old folder, so reinstall:
+
+```bash
+systemctl --user disable --now mgame-mixer-pads.service mgame-mixer-apps.service
+omarchy plugin remove csarmiento.mgame-mixer
+omarchy plugin add https://github.com/crisesarmiento/omarchy-mgame-mixer.git --enable
+```
+
+Then turn the "Hardware pads" and app-routing switches back on so the units are rewritten
+with the new path. Settings, profiles and samples are kept, since they are not stored by id.
+Any keybinding or script that calls the IPC target `csarmiento.mgame-mixer` must use the new id.
 
 ## License
 

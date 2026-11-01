@@ -270,7 +270,7 @@ def mic_params(state):
 # ------------------------------- configs -----------------------------------
 def render_split_conf(pairs, hw_out, hw_in):
     out = ["# M-Audio M-Game RGB Dual: divide la salida y la entrada USB de 8 canales.",
-           "# Generado por el plugin csarmiento.mgame-mixer; no lo edites a mano.",
+           "# Generado por el plugin io.github.crisesarmiento.mgame-mixer; no lo edites a mano.",
            "# mgame-pairs: " + pairs_arg(pairs),
            "context.modules = ["]
     for key in OUT_KEYS:
@@ -353,7 +353,7 @@ def render_mic_conf(p):
 
     lsp = "http://lsp-plug.in/plugins/ladspa/"
     return f"""# Cadena de procesado del micrófono (RNNoise, EQ, compresor, gate).
-# Generado por el plugin csarmiento.mgame-mixer; no lo edites a mano.
+# Generado por el plugin io.github.crisesarmiento.mgame-mixer; no lo edites a mano.
 # La entrada es la fuente "M-Game Alt (in)", mezclada a mono.
 context.modules = [
   {{ name = libpipewire-module-filter-chain

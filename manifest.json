@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "csarmiento.mgame-mixer",
+  "id": "io.github.crisesarmiento.mgame-mixer",
   "name": "M-Game Mixer",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": "Cristian Sarmiento",
   "license": "MIT",
   "homepage": "https://github.com/crisesarmiento/omarchy-mgame-mixer",

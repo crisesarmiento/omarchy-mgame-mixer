@@ -6,7 +6,7 @@ import qs.Ui
 
 Panel {
   id: root
-  moduleName: "csarmiento.mgame-mixer"
+  moduleName: "io.github.crisesarmiento.mgame-mixer"
   manageIpc: false
 
   property var anchorItem: null

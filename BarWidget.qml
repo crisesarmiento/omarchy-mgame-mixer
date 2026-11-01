@@ -11,7 +11,7 @@ import qs.Ui
 // pleno reinicio de audio. Cada acción es un argv: nada se arma como texto de shell.
 BarWidget {
   id: root
-  moduleName: "csarmiento.mgame-mixer"
+  moduleName: "io.github.crisesarmiento.mgame-mixer"
 
   Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
 
@@ -1086,7 +1086,7 @@ BarWidget {
   }
 
   IpcHandler {
-    target: "csarmiento.mgame-mixer"
+    target: "io.github.crisesarmiento.mgame-mixer"
 
     function open(): void { root.open() }
     function close(): void { root.close() }
