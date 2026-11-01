@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "csarmiento.mgame-mixer",
+  "name": "M-Game Mixer",
+  "version": "0.1.0",
+  "author": "Cristian Sarmiento",
+  "license": "MIT",
+  "description": "Mixer Game/Chat para la M-Audio M-Game RGB Dual: volumen, mute y ruteo de apps entre dos sinks virtuales de PipeWire.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "M-Game Mixer",
+    "description": "Ícono de headset; el panel controla los canales Game y Chat de la M-Game",
+    "category": "Audio",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "chatPair": "FC LFE"
+    },
+    "schema": [
+      {
+        "key": "chatPair",
+        "type": "enum",
+        "label": "Canales de Chat",
+        "description": "Par de canales de la salida de 8 canales que usa Chat. Comprobalo con: speaker-test -c 8 -t wav -l 1. Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
+        "options": ["FC LFE", "RL RR", "SL SR"],
+        "defaultValue": "FC LFE"
+      }
+    ]
+  }
+}

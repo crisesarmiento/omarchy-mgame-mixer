@@ -1,0 +1,20 @@
+{
+  "title": "M-Game Mixer",
+  "subtitle.ok": "Game and Chat channels",
+  "subtitle.setup": "Setup required",
+  "channel.game": "Game",
+  "channel.chat": "Chat",
+  "channel.other": "Other output",
+  "default.set": "Set as default output",
+  "default.current": "Default output",
+  "mute": "Mute",
+  "unmute": "Unmute",
+  "streams.header": "APPS",
+  "streams.empty": "No apps are playing audio",
+  "setup.missing": "The Game and Chat virtual sinks do not exist yet.",
+  "setup.mismatch": "Chat is set to %1 but the installed config uses %2.",
+  "setup.install": "Install config and restart audio",
+  "setup.apply": "Apply channels and restart audio",
+  "setup.warning": "Restarting audio briefly cuts all sound, including games.",
+  "setup.working": "Restarting audio…"
+}
