@@ -7,6 +7,16 @@ sampler from the hardware pads.
 
 Plugin id: `csarmiento.mgame-mixer`. The UI is available in English and Spanish.
 
+<p align="center">
+  <img src="screenshots/mixer.png" alt="Mixer tab: four outputs, four inputs, and the hardware mute buttons" width="280">
+  <img src="screenshots/mic.png" alt="Mic tab: noise removal, EQ and compressor" width="280">
+  <img src="screenshots/routing.png" alt="Routing tab: the hardware mix inside the M-Game" width="280">
+  <img src="screenshots/lights.png" alt="Lights tab: LED presets and pad colours" width="280">
+  <img src="screenshots/fx.png" alt="FX tab: voice and mic libraries, read only" width="280">
+  <img src="screenshots/apps.png" alt="Apps tab: route new playback by name" width="280">
+  <img src="screenshots/profiles.png" alt="Profiles tab: save and restore a setup" width="280">
+</p>
+
 ## What you get
 
 **Mixer tab**
@@ -47,11 +57,19 @@ Plugin id: `csarmiento.mgame-mixer`. The UI is available in English and Spanish.
 ## Install
 
 ```bash
+omarchy plugin add https://github.com/crisesarmiento/omarchy-mgame-mixer.git --enable
+```
+
+That clones the repo into `~/.config/omarchy/plugins/csarmiento.mgame-mixer` and puts the
+headset icon on the bar. To develop from a local checkout instead:
+
+```bash
 omarchy plugin validate ~/Projects/omarchy-mgame-mixer
 omarchy plugin add ~/Projects/omarchy-mgame-mixer --enable
 ```
 
 Requires `python3`, `pactl` (pipewire-pulse), `pw-play`, `pw-cli`, `pw-dump`, `aseqdump`,
+`amidi` (`alsa-utils`),
 and for the mic chain `lsp-plugins-ladspa` and `noise-suppression-for-voice`
 (`librnnoise_ladspa`). The EQ uses PipeWire's built-in filters.
 
@@ -123,7 +141,8 @@ on the switch, and removed from autostart when you turn it off.
 | File | Purpose |
 |---|---|
 | `manifest.json`, `BarWidget.qml`, `Panel.qml` | The plugin |
-| `mgame.py` | Helper: status, volume, routing, config generation, mic chain, sampler, listener |
+| `mgame.py` | Helper: status, volume, routing, mic chain, sampler, listener, device and profiles |
+| `data/` | LED map, voice/mic FX libraries, routing presets. Rebuilt with `data/tools/` |
 | `pads.json`, `buttons.json` | Hardware message maps |
 | `pipewire/` | Default PipeWire configs |
 | `i18n/` | English and Spanish strings |
