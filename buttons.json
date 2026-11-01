@@ -1,0 +1,15 @@
+{
+  "_source": "Captured 2026-10-31 on this unit. Buttons are LATCHING: message carries the new state (01=on, 00=off), not press/release. Labels are the user's names, in the order they pressed them.",
+  "_format": "F0 00 01 05 42 00 01 <id> 01 02 01 <state> 00 00 00 <cs> F7 (a twin with sub-byte 02 instead of 01 follows, likely LED echo). Mute changes also emit F0 00 01 05 42 00 02 00 00 02 44 <8 bytes> <cs> F7 (per-output mute/routing vector, undecoded). Page/bank changes (0E,12) also dump preset blocks (types 0B/04/07/08) — undecoded.",
+  "buttons": {
+    "mic_mute":       {"id": "02", "on": "F0 00 01 05 42 00 01 02 01 02 01 01", "off": "F0 00 01 05 42 00 01 02 01 02 01 00", "note": "also emits id 30 alongside"},
+    "game_mute":      {"id": "06", "on": "F0 00 01 05 42 00 01 06 01 02 01 01", "off": "F0 00 01 05 42 00 01 06 01 02 01 00"},
+    "chat_mute":      {"id": "08", "on": "F0 00 01 05 42 00 01 08 01 02 01 01", "off": "F0 00 01 05 42 00 01 08 01 02 01 00"},
+    "sampler_mute":   {"id": "0A", "on": "F0 00 01 05 42 00 01 0A 01 02 01 01", "off": "F0 00 01 05 42 00 01 0A 01 02 01 00"},
+    "main_alt_mute":  {"id": "0C", "on": "F0 00 01 05 42 00 01 0C 01 02 01 01", "off": "F0 00 01 05 42 00 01 0C 01 02 01 00"},
+    "sample_page_1":  {"id": "0E", "on": "F0 00 01 05 42 00 01 0E 01 02 01 01", "off": "F0 00 01 05 42 00 01 0E 01 02 01 00"},
+    "sample_page_2":  {"id": "12", "on": "F0 00 01 05 42 00 01 12 01 02 01 01", "off": "F0 00 01 05 42 00 01 12 01 02 01 00"},
+    "bank_switch":    {"id": "10", "on": "F0 00 01 05 42 00 01 10 01 02 01 01", "off": "F0 00 01 05 42 00 01 10 01 02 01 00"},
+    "fx_param":       {"id": "00", "on": "F0 00 01 05 42 00 01 00 01 02 01 01", "off": "F0 00 01 05 42 00 01 00 01 02 01 00"}
+  }
+}

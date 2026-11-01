@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "id": "csarmiento.mgame-mixer",
   "name": "M-Game Mixer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Cristian Sarmiento",
   "license": "MIT",
   "homepage": "https://github.com/crisesarmiento/omarchy-mgame-mixer",
-  "description": "Mixer Game/Chat para la M-Audio M-Game RGB Dual: volumen, mute y ruteo de apps entre dos sinks virtuales de PipeWire.",
+  "description": "Mixer para la M-Audio M-Game RGB Dual: 4 salidas y 4 entradas virtuales, cadena de mic, sampler con pads físicos.",
   "kinds": [
     "bar-widget"
   ],
@@ -15,25 +15,124 @@
   },
   "barWidget": {
     "displayName": "M-Game Mixer",
-    "description": "Ícono de headset; el panel controla los canales Game y Chat de la M-Game",
+    "description": "Ícono de headset; el panel tiene Mixer, Mic y Sampler para la M-Game",
     "category": "Audio",
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
-      "chatPair": "FC LFE"
+      "outGame": "FL FR",
+      "outChat": "FC LFE",
+      "outSampler": "RL RR",
+      "outSystem": "SL SR",
+      "inStream": "FL FR",
+      "inAlt": "FC LFE",
+      "inChat": "RL RR",
+      "inSampler": "SL SR"
     },
     "schema": [
       {
-        "key": "chatPair",
+        "key": "outGame",
         "type": "enum",
-        "label": "Canales de Chat",
-        "description": "Par de canales de la salida de 8 canales que usa Chat. Comprobalo con: speaker-test -c 8 -t wav -l 1. Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
+        "label": "Game (salida)",
+        "description": "Par de canales de la interfaz de 8 canales. El mapeo viene de la comunidad: confirmalo de oído con speaker-test -c 8 -t wav -l 1 (salidas) o grabando (entradas). Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
         "options": [
+          "FL FR",
+          "FC LFE",
+          "RL RR",
+          "SL SR"
+        ],
+        "defaultValue": "FL FR"
+      },
+      {
+        "key": "outChat",
+        "type": "enum",
+        "label": "Chat (salida)",
+        "description": "Par de canales de la interfaz de 8 canales. El mapeo viene de la comunidad: confirmalo de oído con speaker-test -c 8 -t wav -l 1 (salidas) o grabando (entradas). Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
+        "options": [
+          "FL FR",
           "FC LFE",
           "RL RR",
           "SL SR"
         ],
         "defaultValue": "FC LFE"
+      },
+      {
+        "key": "outSampler",
+        "type": "enum",
+        "label": "Sampler (salida)",
+        "description": "Par de canales de la interfaz de 8 canales. El mapeo viene de la comunidad: confirmalo de oído con speaker-test -c 8 -t wav -l 1 (salidas) o grabando (entradas). Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
+        "options": [
+          "FL FR",
+          "FC LFE",
+          "RL RR",
+          "SL SR"
+        ],
+        "defaultValue": "RL RR"
+      },
+      {
+        "key": "outSystem",
+        "type": "enum",
+        "label": "System (salida)",
+        "description": "Par de canales de la interfaz de 8 canales. El mapeo viene de la comunidad: confirmalo de oído con speaker-test -c 8 -t wav -l 1 (salidas) o grabando (entradas). Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
+        "options": [
+          "FL FR",
+          "FC LFE",
+          "RL RR",
+          "SL SR"
+        ],
+        "defaultValue": "SL SR"
+      },
+      {
+        "key": "inStream",
+        "type": "enum",
+        "label": "Stream (entrada)",
+        "description": "Par de canales de la interfaz de 8 canales. El mapeo viene de la comunidad: confirmalo de oído con speaker-test -c 8 -t wav -l 1 (salidas) o grabando (entradas). Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
+        "options": [
+          "FL FR",
+          "FC LFE",
+          "RL RR",
+          "SL SR"
+        ],
+        "defaultValue": "FL FR"
+      },
+      {
+        "key": "inAlt",
+        "type": "enum",
+        "label": "Alt (entrada, alimenta el mic)",
+        "description": "Par de canales de la interfaz de 8 canales. El mapeo viene de la comunidad: confirmalo de oído con speaker-test -c 8 -t wav -l 1 (salidas) o grabando (entradas). Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
+        "options": [
+          "FL FR",
+          "FC LFE",
+          "RL RR",
+          "SL SR"
+        ],
+        "defaultValue": "FC LFE"
+      },
+      {
+        "key": "inChat",
+        "type": "enum",
+        "label": "Chat (entrada)",
+        "description": "Par de canales de la interfaz de 8 canales. El mapeo viene de la comunidad: confirmalo de oído con speaker-test -c 8 -t wav -l 1 (salidas) o grabando (entradas). Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
+        "options": [
+          "FL FR",
+          "FC LFE",
+          "RL RR",
+          "SL SR"
+        ],
+        "defaultValue": "RL RR"
+      },
+      {
+        "key": "inSampler",
+        "type": "enum",
+        "label": "Sampler (entrada)",
+        "description": "Par de canales de la interfaz de 8 canales. El mapeo viene de la comunidad: confirmalo de oído con speaker-test -c 8 -t wav -l 1 (salidas) o grabando (entradas). Al cambiarlo, el panel ofrece aplicar la config y reiniciar el audio.",
+        "options": [
+          "FL FR",
+          "FC LFE",
+          "RL RR",
+          "SL SR"
+        ],
+        "defaultValue": "SL SR"
       }
     ]
   }
